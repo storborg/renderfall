@@ -7,7 +7,7 @@
 #include <fftw3.h>
 
 
-void render_fft_value(png_byte *ptr, double val) {
+void render_fft_value(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
     ptr[0] = (uint8_t) (val * 4);
     ptr[1] = 0;
@@ -17,33 +17,33 @@ void render_fft_value(png_byte *ptr, double val) {
 void waterfall(png_structp png_ptr, FILE* fp, int w, int h) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
-    fftw_complex *in, *out;
-    fftw_plan p;
+    fftwf_complex *in, *out;
+    fftwf_plan p;
 
-    double val;
+    float val;
     uint32_t offset;
 
     // Allocate a buffer for a row of raw samples: 4 bytes per IQ pair.
     uint16_t *raw = (uint16_t*) malloc(w * 2 * 2);
 
-    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    p = fftw_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_MEASURE);
+    in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
+    out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
+    p = fftwf_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_MEASURE);
 
     for (uint32_t y = 0; y < h; y++) {
 
         // read an FFT-worth of complex samples
         fread(raw, 4, w, fp);
 
-        // convert input from uint16_t pair to double pair
+        // convert input from uint16_t pair to float pair
         for (uint32_t i = 0; i < w; i++) {
             in[i][0] = ((float) raw[i] / UINT16_MAX);
             in[i][1] = ((float) raw[i + 1] / UINT16_MAX);
         }
 
-        fftw_execute(p);
+        fftwf_execute(p);
 
-        // convert output from doubles to colors
+        // convert output from floats to colors
         for (uint32_t x = 0; x < w; x++) {
             val = hypot(out[x][0], out[x][1]);
             render_fft_value(&(row[x * 3]), val);
@@ -53,9 +53,9 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h) {
     }
 
 
-    fftw_destroy_plan(p);
-    fftw_free(in);
-    fftw_free(out);
+    fftwf_destroy_plan(p);
+    fftwf_free(in);
+    fftwf_free(out);
 }
 
 int main(int argc, char* argv[]) {
