@@ -7,24 +7,59 @@
 #include <fftw3.h>
 
 
+#define SCALE 500
+
+typedef enum {
+    FORMAT_INT8 = 0,
+    FORMAT_INT16 = 1,
+    FORMAT_INT32 = 2,
+    FORMAT_FLOAT32 = 3,
+    FORMAT_FLOAT64 = 4,
+} format_t;
+
+
 void render_fft_value(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
-    ptr[0] = (uint8_t) (val * 4);
+    ptr[0] = (uint8_t) (val * SCALE);
     ptr[1] = 0;
-    ptr[2] = (uint8_t) (val * 4);
+    ptr[2] = (uint8_t) (val * SCALE);
 }
 
-void waterfall(png_structp png_ptr, FILE* fp, int w, int h) {
+void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    int8_t *raw = (int8_t*) malloc(n * 2);
+    fread(raw, 2, n, fp);
+    for (uint32_t i = 0; i < n; i++) {
+        buf[i][0] = ((float) raw[i] / INT8_MAX);
+        buf[i][1] = ((float) raw[i + 1] / INT8_MAX);
+    }
+    free(raw);
+}
+
+void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    int16_t *raw = (int16_t*) malloc(n * 2 * 2);
+    for (uint32_t i = 0; i < n; i++) {
+        buf[i][0] = ((float) raw[i] / INT16_MAX);
+        buf[i][1] = ((float) raw[i + 1] / INT16_MAX);
+    }
+    free(raw);
+}
+
+void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    float *raw = (float*) malloc(n * 2 * 4);
+    for (uint32_t i = 0; i < n; i++) {
+        buf[i][0] = raw[i];
+        buf[i][1] = raw[i + 1];
+    }
+    free(raw);
+}
+
+void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
     fftwf_complex *in, *out;
     fftwf_plan p;
 
     float val;
-    uint32_t offset;
-
-    // Allocate a buffer for a row of raw samples: 4 bytes per IQ pair.
-    uint16_t *raw = (uint16_t*) malloc(w * 2 * 2);
 
     in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
     out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
@@ -32,13 +67,13 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h) {
 
     for (uint32_t y = 0; y < h; y++) {
 
-        // read an FFT-worth of complex samples
-        fread(raw, 4, w, fp);
-
-        // convert input from uint16_t pair to float pair
-        for (uint32_t i = 0; i < w; i++) {
-            in[i][0] = ((float) raw[i] / UINT16_MAX);
-            in[i][1] = ((float) raw[i + 1] / UINT16_MAX);
+        // read an FFT-worth of complex samples and convert them to floats
+        if (fmt == FORMAT_INT8) {
+            read_samples_int8(fp, in, w);
+        } else if (fmt == FORMAT_INT16) {
+            read_samples_int16(fp, in, w);
+        } else if (fmt == FORMAT_FLOAT32) {
+            read_samples_float32(fp, in, w);
         }
 
         fftwf_execute(p);
@@ -120,7 +155,7 @@ int main(int argc, char* argv[]) {
     png_write_info(png_ptr, info_ptr);
 
 
-    waterfall(png_ptr, readfp, width, height);
+    waterfall(png_ptr, readfp, width, height, FORMAT_FLOAT32);
 
     png_write_end(png_ptr, NULL);
 
