@@ -7,18 +7,30 @@
 #include <fftw3.h>
 
 
-#define SCALE 500
+#define SCALE 4
 
 typedef enum {
     FORMAT_INT8 = 0,
-    FORMAT_INT16 = 1,
-    FORMAT_INT32 = 2,
-    FORMAT_FLOAT32 = 3,
-    FORMAT_FLOAT64 = 4,
+    FORMAT_UINT8 = 1,
+    FORMAT_INT16 = 2,
+    FORMAT_UINT16 = 3,
+    FORMAT_INT32 = 4,
+    FORMAT_UINT32 = 5,
+    FORMAT_FLOAT32 = 6,
+    FORMAT_FLOAT64 = 7,
 } format_t;
 
 
-void render_fft_value(png_byte *ptr, float val) {
+void scale_log(png_byte *ptr, float val) {
+    // Make a monochromatic purple output for now.
+    float db = log10f(val);
+    uint8_t v = (uint8_t) (val * SCALE);
+    ptr[0] = 0;
+    ptr[1] = v;
+    ptr[2] = 0;
+}
+
+void scale_linear(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
     ptr[0] = (uint8_t) (val * SCALE);
     ptr[1] = 0;
@@ -37,6 +49,7 @@ void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n) {
 
 void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n) {
     int16_t *raw = (int16_t*) malloc(n * 2 * 2);
+    fread(raw, 4, n, fp);
     for (uint32_t i = 0; i < n; i++) {
         buf[i][0] = ((float) raw[i] / INT16_MAX);
         buf[i][1] = ((float) raw[i + 1] / INT16_MAX);
@@ -44,8 +57,18 @@ void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n) {
     free(raw);
 }
 
+void read_samples_uint16(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    uint16_t *raw = (uint16_t*) malloc(n * 2 * 2);
+    fread(raw, 4, n, fp);
+    for (uint32_t i = 0; i < n; i++) {
+        buf[i][0] = ((float) raw[i] / UINT16_MAX);
+        buf[i][1] = ((float) raw[i + 1] / UINT16_MAX);
+    }
+}
+
 void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
     float *raw = (float*) malloc(n * 2 * 4);
+    fread(raw, 4, n, fp);
     for (uint32_t i = 0; i < n; i++) {
         buf[i][0] = raw[i];
         buf[i][1] = raw[i + 1];
@@ -63,15 +86,16 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
 
     in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
     out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
-    p = fftwf_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_MEASURE);
+    p = fftwf_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
     for (uint32_t y = 0; y < h; y++) {
-
         // read an FFT-worth of complex samples and convert them to floats
         if (fmt == FORMAT_INT8) {
             read_samples_int8(fp, in, w);
         } else if (fmt == FORMAT_INT16) {
             read_samples_int16(fp, in, w);
+        } else if (fmt == FORMAT_UINT16) {
+            read_samples_uint16(fp, in, w);
         } else if (fmt == FORMAT_FLOAT32) {
             read_samples_float32(fp, in, w);
         }
@@ -81,12 +105,11 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
         // convert output from floats to colors
         for (uint32_t x = 0; x < w; x++) {
             val = hypot(out[x][0], out[x][1]);
-            render_fft_value(&(row[x * 3]), val);
+            scale_linear(&(row[x * 3]), val);
         }
 
         png_write_row(png_ptr, row);
     }
-
 
     fftwf_destroy_plan(p);
     fftwf_free(in);
@@ -155,7 +178,7 @@ int main(int argc, char* argv[]) {
     png_write_info(png_ptr, info_ptr);
 
 
-    waterfall(png_ptr, readfp, width, height, FORMAT_FLOAT32);
+    waterfall(png_ptr, readfp, width, height, FORMAT_UINT16);
 
     png_write_end(png_ptr, NULL);
 
