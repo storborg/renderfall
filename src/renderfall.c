@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
 
 #include <png.h>
 #include <fftw3.h>
 
+float maxdb = 0;
+float mindb = FLT_MAX;
 
-#define SCALE 4
+int32_t maxval = 0;
+int32_t minval = UINT32_MAX;
 
 typedef enum {
     FORMAT_INT8 = 0,
@@ -20,25 +24,35 @@ typedef enum {
     FORMAT_FLOAT64 = 7,
 } format_t;
 
-
 void scale_log(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
     float db = log10f(val);
-    uint8_t v = (uint8_t) (val * SCALE);
-    ptr[0] = 0;
-    ptr[1] = v;
-    ptr[2] = 0;
+    if (db > maxdb) maxdb = db;
+    if (db < mindb) mindb = db;
+
+    int32_t v = (int32_t) ((db * 80.0f) + 40.0f);
+    if (v > maxval) maxval = v;
+    if (v < minval) minval = v;
+
+    v = 255 - v;
+
+    if (v > 255) v = 255;
+    if (v < 0) v = 0;
+
+    ptr[0] = (uint8_t) v;
+    ptr[1] = (uint8_t) v;
+    ptr[2] = (uint8_t) v;
 }
 
 void scale_linear(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
-    ptr[0] = (uint8_t) (val * SCALE);
+    ptr[0] = (uint8_t) (val * 4);
     ptr[1] = 0;
-    ptr[2] = (uint8_t) (val * SCALE);
+    ptr[2] = (uint8_t) (val * 4);
 }
 
 void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    int8_t *raw = (int8_t*) malloc(n * 2);
+    int8_t *raw = (int8_t*) malloc(n * 2 * sizeof(int8_t));
     fread(raw, 2, n, fp);
     for (uint32_t i = 0; i < n; i++) {
         buf[i][0] = ((float) raw[i] / INT8_MAX);
@@ -48,32 +62,38 @@ void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n) {
 }
 
 void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    int16_t *raw = (int16_t*) malloc(n * 2 * 2);
+    int16_t *raw = (int16_t*) malloc(n * 2 * sizeof(int16_t));
     fread(raw, 4, n, fp);
     for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = ((float) raw[i] / INT16_MAX);
-        buf[i][1] = ((float) raw[i + 1] / INT16_MAX);
+        buf[i][0] = ((float) raw[i * 2] / INT16_MAX);
+        buf[i][1] = ((float) raw[(i * 2) + 1] / INT16_MAX);
     }
     free(raw);
 }
 
 void read_samples_uint16(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    uint16_t *raw = (uint16_t*) malloc(n * 2 * 2);
+    uint16_t *raw = (uint16_t*) malloc(n * 2 * sizeof(uint16_t));
     fread(raw, 4, n, fp);
     for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = ((float) raw[i] / UINT16_MAX);
-        buf[i][1] = ((float) raw[i + 1] / UINT16_MAX);
+        buf[i][0] = ((float) raw[i * 2] / UINT16_MAX);
+        buf[i][1] = ((float) raw[(i * 2) + 1] / UINT16_MAX);
     }
 }
 
-void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    float *raw = (float*) malloc(n * 2 * 4);
-    fread(raw, 4, n, fp);
+void read_samples_float32_bad(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    size_t sample_size = 2 * sizeof(float);
+    float *raw = (float*) malloc(n * sample_size);
+    fread(raw, sample_size, n, fp);
     for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = raw[i];
-        buf[i][1] = raw[i + 1];
+        buf[i][0] = raw[i * 2];
+        buf[i][1] = raw[(i * 2) + 1];
     }
     free(raw);
+}
+
+void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
+    size_t sample_size = 2 * sizeof(float);
+    fread(buf, sample_size, n, fp);
 }
 
 void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
@@ -105,7 +125,7 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
         // convert output from floats to colors
         for (uint32_t x = 0; x < w; x++) {
             val = hypot(out[x][0], out[x][1]);
-            scale_linear(&(row[x * 3]), val);
+            scale_log(&(row[x * 3]), val);
         }
 
         png_write_row(png_ptr, row);
@@ -120,6 +140,7 @@ int main(int argc, char* argv[]) {
     char filename[255];
     int bit_depth = 8;
     int color_type = PNG_COLOR_TYPE_RGB;
+    format_t fmt = FORMAT_FLOAT32;
 
     if (argc < 2) {
         printf("Usage: %s <filename>\n", argv[0]);
@@ -134,8 +155,35 @@ int main(int argc, char* argv[]) {
     int size = ftell(readfp);
     fseek(readfp, 0, SEEK_SET);
 
-    // Assuming 16-bit complex integer samples.
-    int nsamples = size / 4;
+    size_t sample_size;
+    switch(fmt) {
+        case FORMAT_INT8:
+            sample_size = sizeof(int8_t) * 2;
+            break;
+        case FORMAT_UINT8:
+            sample_size = sizeof(uint8_t) * 2;
+            break;
+        case FORMAT_INT16:
+            sample_size = sizeof(int16_t) * 2;
+            break;
+        case FORMAT_UINT16:
+            sample_size = sizeof(uint16_t) * 2;
+            break;
+        case FORMAT_INT32:
+            sample_size = sizeof(int32_t) * 2;
+            break;
+        case FORMAT_UINT32:
+            sample_size = sizeof(uint32_t) * 2;
+            break;
+        case FORMAT_FLOAT32:
+            sample_size = sizeof(float) * 2;
+            break;
+        case FORMAT_FLOAT64:
+            sample_size = sizeof(double) * 2;
+            break;
+    }
+
+    int nsamples = size / sample_size;
 
     uint32_t width = 2048;
     uint32_t height = nsamples / width;
@@ -177,8 +225,7 @@ int main(int argc, char* argv[]) {
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(png_ptr, info_ptr);
 
-
-    waterfall(png_ptr, readfp, width, height, FORMAT_UINT16);
+    waterfall(png_ptr, readfp, width, height, FORMAT_FLOAT32);
 
     png_write_end(png_ptr, NULL);
 
@@ -187,6 +234,12 @@ int main(int argc, char* argv[]) {
 
     fclose(writefp);
     fclose(readfp);
+
+    printf("Max dB: %f\n", maxdb);
+    printf("Min dB: %f\n", mindb);
+
+    printf("Max value: %d\n", maxval);
+    printf("Min value: %d\n", minval);
 
     return EXIT_SUCCESS;
 }
