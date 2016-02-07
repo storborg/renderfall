@@ -96,6 +96,11 @@ void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
     fread(buf, sample_size, n, fp);
 }
 
+void render_complex(png_byte *ptr, fftwf_complex val) {
+    float mag = hypot(val[0], val[1]);
+    scale_log(ptr, mag);
+}
+
 void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
@@ -123,9 +128,18 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
         fftwf_execute(p);
 
         // convert output from floats to colors
-        for (uint32_t x = 0; x < w; x++) {
-            val = hypot(out[x][0], out[x][1]);
-            scale_log(&(row[x * 3]), val);
+
+        uint32_t half = w / 2;
+        uint32_t x;
+
+        // first half (negative frequencies)
+        for (x = 0; x < half; x++) {
+            render_complex(&(row[x * 3]), out[x + half]);
+        }
+
+        // second half (positive frequencies)
+        for (x = half; x < w; x++) {
+            render_complex(&(row[x * 3]), out[x - half]);
         }
 
         png_write_row(png_ptr, row);
