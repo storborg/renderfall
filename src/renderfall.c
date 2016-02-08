@@ -8,22 +8,13 @@
 #include <png.h>
 #include <fftw3.h>
 
+#include "formats.h"
+
 float maxdb = 0;
 float mindb = FLT_MAX;
 
 int32_t maxval = 0;
 int32_t minval = INT32_MAX;
-
-typedef enum {
-    FORMAT_INT8 = 0,
-    FORMAT_UINT8 = 1,
-    FORMAT_INT16 = 2,
-    FORMAT_UINT16 = 3,
-    FORMAT_INT32 = 4,
-    FORMAT_UINT32 = 5,
-    FORMAT_FLOAT32 = 6,
-    FORMAT_FLOAT64 = 7,
-} format_t;
 
 void scale_log(png_byte *ptr, float val) {
     // Make a monochromatic purple output for now.
@@ -54,39 +45,6 @@ void scale_linear(png_byte *ptr, float val) {
     ptr[2] = (uint8_t) (val * 4);
 }
 
-void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    int8_t *raw = (int8_t*) malloc(n * 2 * sizeof(int8_t));
-    fread(raw, 2, n, fp);
-    for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = ((float) raw[i] / INT8_MAX);
-        buf[i][1] = ((float) raw[i + 1] / INT8_MAX);
-    }
-    free(raw);
-}
-
-void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    int16_t *raw = (int16_t*) malloc(n * 2 * sizeof(int16_t));
-    fread(raw, 4, n, fp);
-    for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = ((float) raw[i * 2] / INT16_MAX);
-        buf[i][1] = ((float) raw[(i * 2) + 1] / INT16_MAX);
-    }
-    free(raw);
-}
-
-void read_samples_uint16(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    uint16_t *raw = (uint16_t*) malloc(n * 2 * sizeof(uint16_t));
-    fread(raw, 4, n, fp);
-    for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = ((float) raw[i * 2] / UINT16_MAX);
-        buf[i][1] = ((float) raw[(i * 2) + 1] / UINT16_MAX);
-    }
-}
-
-void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    size_t sample_size = 2 * sizeof(float);
-    fread(buf, sample_size, n, fp);
-}
 
 void render_complex(png_byte *ptr, fftwf_complex val) {
     float mag = hypot(val[0], val[1]);
