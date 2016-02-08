@@ -59,7 +59,7 @@ void render_complex(png_byte *ptr, fftw_complex val) {
 }
 
 void waterfall(png_structp png_ptr, FILE* fp,
-               uint32_t w, uint32_t h, format_t fmt) {
+               uint32_t w, uint32_t h, read_samples_fn reader) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
     fftw_complex *in, *out, *inter;
@@ -71,29 +71,19 @@ void waterfall(png_structp png_ptr, FILE* fp,
     p = fftw_plan_dft_1d(w, inter, out, FFTW_FORWARD, FFTW_PATIENT);
 
     window_t win = make_window_hann(w);
+    uint32_t half = w / 2;
+    uint32_t x, y;
 
-    for (uint32_t y = 0; y < h; y++) {
+    for (y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to doubles
-        if (fmt == FORMAT_INT8) {
-            read_samples_int8(fp, in, w);
-        } else if (fmt == FORMAT_INT16) {
-            read_samples_int16(fp, in, w);
-        } else if (fmt == FORMAT_UINT16) {
-            read_samples_uint16(fp, in, w);
-        } else if (fmt == FORMAT_FLOAT32) {
-            read_samples_float32(fp, in, w);
-        } else if (fmt == FORMAT_FLOAT64) {
-            read_samples_float64(fp, in, w);
-        }
+        reader(fp, in, w);
 
+        // apply a window we created earlier
         apply_window(win, in, inter);
 
         fftw_execute(p);
 
         // convert output from doubles to colors
-
-        uint32_t half = w / 2;
-        uint32_t x;
 
         // first half (negative frequencies)
         for (x = 0; x < half; x++) {
@@ -136,30 +126,39 @@ int main(int argc, char* argv[]) {
     fseek(readfp, 0, SEEK_SET);
 
     size_t sample_size;
+    read_samples_fn reader;
     switch(fmt) {
         case FORMAT_INT8:
             sample_size = sizeof(int8_t) * 2;
+            reader = read_samples_int8;
             break;
         case FORMAT_UINT8:
             sample_size = sizeof(uint8_t) * 2;
+            reader = read_samples_uint8;
             break;
         case FORMAT_INT16:
             sample_size = sizeof(int16_t) * 2;
+            reader = read_samples_int16;
             break;
         case FORMAT_UINT16:
             sample_size = sizeof(uint16_t) * 2;
+            reader = read_samples_uint16;
             break;
         case FORMAT_INT32:
             sample_size = sizeof(int32_t) * 2;
+            reader = read_samples_int32;
             break;
         case FORMAT_UINT32:
             sample_size = sizeof(uint32_t) * 2;
+            reader = read_samples_uint32;
             break;
         case FORMAT_FLOAT32:
             sample_size = sizeof(float) * 2;
+            reader = read_samples_float32;
             break;
         case FORMAT_FLOAT64:
             sample_size = sizeof(double) * 2;
+            reader = read_samples_float64;
             break;
     }
 
@@ -205,7 +204,7 @@ int main(int argc, char* argv[]) {
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(png_ptr, info_ptr);
 
-    waterfall(png_ptr, readfp, width, height, FORMAT_FLOAT32);
+    waterfall(png_ptr, readfp, width, height, reader);
 
     png_write_end(png_ptr, NULL);
 
