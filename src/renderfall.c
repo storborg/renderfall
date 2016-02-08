@@ -9,6 +9,7 @@
 #include <fftw3.h>
 
 #include "formats.h"
+#include "window.h"
 
 float maxdb = 0;
 float mindb = FLT_MAX;
@@ -54,12 +55,15 @@ void waterfall(png_structp png_ptr, FILE* fp,
                uint32_t w, uint32_t h, format_t fmt) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
-    fftw_complex *in, *out;
+    fftw_complex *in, *out, *inter;
     fftw_plan p;
 
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
+    inter = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    p = fftw_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_PATIENT);
+    p = fftw_plan_dft_1d(w, inter, out, FFTW_FORWARD, FFTW_PATIENT);
+
+    window_t win = make_window_hann(w);
 
     for (uint32_t y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to floats
@@ -74,6 +78,8 @@ void waterfall(png_structp png_ptr, FILE* fp,
         } else if (fmt == FORMAT_FLOAT64) {
             read_samples_float64(fp, in, w);
         }
+
+        apply_window(win, in, inter);
 
         fftw_execute(p);
 
@@ -95,8 +101,11 @@ void waterfall(png_structp png_ptr, FILE* fp,
         png_write_row(png_ptr, row);
     }
 
+    destroy_window(win);
+
     fftw_destroy_plan(p);
     fftw_free(in);
+    fftw_free(inter);
     fftw_free(out);
 }
 

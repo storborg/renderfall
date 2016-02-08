@@ -1,6 +1,6 @@
 set(INSTALL_DEFAULT_BINDIR "bin" CACHE STRING "Appended to CMAKE_INSTALL_PREFIX")
 
-add_executable(renderfall renderfall.c formats.c)
+add_executable(renderfall renderfall.c formats.c window.c)
 install(TARGETS renderfall RUNTIME DESTINATION ${INSTALL_DEFAULT_BINDIR})
 
 find_library(FFTW_LIBRARY
