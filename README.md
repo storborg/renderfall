@@ -9,7 +9,7 @@ The goal is to be able to render poster-scale visualizations of large (hundreds
 of GB) input samples, so it places a large emphasis on performance, and avoids
 loading the entire input stream into memory.
 
-Features;
+Features:
 
 - Basically None
 
