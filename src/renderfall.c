@@ -11,15 +11,15 @@
 #include "formats.h"
 #include "window.h"
 
-float maxdb = 0;
-float mindb = FLT_MAX;
+double maxdb = 0;
+double mindb = FLT_MAX;
 
 int32_t maxval = 0;
 int32_t minval = INT32_MAX;
 
-void scale_log(png_byte *ptr, float val) {
+void scale_log(png_byte *ptr, double val) {
     // Make a monochromatic purple output for now.
-    float db = log10f(val);
+    double db = log10(val);
     if (db > maxdb) maxdb = db;
     if (db < mindb) mindb = db;
 
@@ -39,15 +39,22 @@ void scale_log(png_byte *ptr, float val) {
     ptr[2] = (uint8_t) v;
 }
 
-void scale_linear(png_byte *ptr, float val) {
+void scale_linear(png_byte *ptr, double val) {
+    int32_t v = (int32_t) (val * 100.0f);
+    if (v > maxval) maxval = v;
+    if (v < minval) minval = v;
+
+    if (v > 255) v = 255;
+    if (v < 0) v = 0;
+
     // Make a monochromatic purple output for now.
-    ptr[0] = (uint8_t) (val * 4);
+    ptr[0] = (uint8_t) v;
     ptr[1] = 0;
-    ptr[2] = (uint8_t) (val * 4);
+    ptr[2] = (uint8_t) v;
 }
 
 void render_complex(png_byte *ptr, fftw_complex val) {
-    float mag = hypot(val[0], val[1]);
+    double mag = hypot(val[0], val[1]);
     scale_log(ptr, mag);
 }
 
@@ -66,7 +73,7 @@ void waterfall(png_structp png_ptr, FILE* fp,
     window_t win = make_window_hann(w);
 
     for (uint32_t y = 0; y < h; y++) {
-        // read an FFT-worth of complex samples and convert them to floats
+        // read an FFT-worth of complex samples and convert them to doubles
         if (fmt == FORMAT_INT8) {
             read_samples_int8(fp, in, w);
         } else if (fmt == FORMAT_INT16) {
@@ -83,7 +90,7 @@ void waterfall(png_structp png_ptr, FILE* fp,
 
         fftw_execute(p);
 
-        // convert output from floats to colors
+        // convert output from doubles to colors
 
         uint32_t half = w / 2;
         uint32_t x;
