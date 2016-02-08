@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -11,7 +12,7 @@ float maxdb = 0;
 float mindb = FLT_MAX;
 
 int32_t maxval = 0;
-int32_t minval = UINT32_MAX;
+int32_t minval = INT32_MAX;
 
 typedef enum {
     FORMAT_INT8 = 0,
@@ -30,7 +31,9 @@ void scale_log(png_byte *ptr, float val) {
     if (db > maxdb) maxdb = db;
     if (db < mindb) mindb = db;
 
-    int32_t v = (int32_t) ((db * 80.0f) + 40.0f);
+    // Kind of arbitrarily picked.
+    int32_t v = (int32_t) ((db * 85.0f) + 50.0f);
+
     if (v > maxval) maxval = v;
     if (v < minval) minval = v;
 
@@ -80,17 +83,6 @@ void read_samples_uint16(FILE *fp, fftwf_complex *buf, uint32_t n) {
     }
 }
 
-void read_samples_float32_bad(FILE *fp, fftwf_complex *buf, uint32_t n) {
-    size_t sample_size = 2 * sizeof(float);
-    float *raw = (float*) malloc(n * sample_size);
-    fread(raw, sample_size, n, fp);
-    for (uint32_t i = 0; i < n; i++) {
-        buf[i][0] = raw[i * 2];
-        buf[i][1] = raw[(i * 2) + 1];
-    }
-    free(raw);
-}
-
 void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n) {
     size_t sample_size = 2 * sizeof(float);
     fread(buf, sample_size, n, fp);
@@ -106,8 +98,6 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
 
     fftwf_complex *in, *out;
     fftwf_plan p;
-
-    float val;
 
     in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
     out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
