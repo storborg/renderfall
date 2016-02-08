@@ -4,7 +4,7 @@ add_executable(renderfall renderfall.c formats.c)
 install(TARGETS renderfall RUNTIME DESTINATION ${INSTALL_DEFAULT_BINDIR})
 
 find_library(FFTW_LIBRARY
-    NAMES fftw3f
+    NAMES fftw3
     PATHS ${CMAKE_PREFIX_PATH}/lib
 )
 set(FFTW_LIBRARIES "${FFTW_LIBRARY}")

@@ -46,7 +46,7 @@ void scale_linear(png_byte *ptr, float val) {
 }
 
 
-void render_complex(png_byte *ptr, fftwf_complex val) {
+void render_complex(png_byte *ptr, fftw_complex val) {
     float mag = hypot(val[0], val[1]);
     scale_log(ptr, mag);
 }
@@ -54,12 +54,12 @@ void render_complex(png_byte *ptr, fftwf_complex val) {
 void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
-    fftwf_complex *in, *out;
-    fftwf_plan p;
+    fftw_complex *in, *out;
+    fftw_plan p;
 
-    in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
-    out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * w);
-    p = fftwf_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
+    p = fftw_plan_dft_1d(w, in, out, FFTW_FORWARD, FFTW_PATIENT);
 
     for (uint32_t y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to floats
@@ -73,7 +73,7 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
             read_samples_float32(fp, in, w);
         }
 
-        fftwf_execute(p);
+        fftw_execute(p);
 
         // convert output from floats to colors
 
@@ -93,9 +93,9 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
         png_write_row(png_ptr, row);
     }
 
-    fftwf_destroy_plan(p);
-    fftwf_free(in);
-    fftwf_free(out);
+    fftw_destroy_plan(p);
+    fftw_free(in);
+    fftw_free(out);
 }
 
 int main(int argc, char* argv[]) {

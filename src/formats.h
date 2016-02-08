@@ -16,7 +16,7 @@ typedef enum {
     FORMAT_FLOAT64 = 7,
 } format_t;
 
-void read_samples_int8(FILE *fp, fftwf_complex *buf, uint32_t n);
-void read_samples_int16(FILE *fp, fftwf_complex *buf, uint32_t n);
-void read_samples_uint16(FILE *fp, fftwf_complex *buf, uint32_t n);
-void read_samples_float32(FILE *fp, fftwf_complex *buf, uint32_t n);
+void read_samples_int8(FILE *fp, fftw_complex *buf, uint32_t n);
+void read_samples_int16(FILE *fp, fftw_complex *buf, uint32_t n);
+void read_samples_uint16(FILE *fp, fftw_complex *buf, uint32_t n);
+void read_samples_float32(FILE *fp, fftw_complex *buf, uint32_t n);
