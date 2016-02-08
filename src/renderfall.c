@@ -50,7 +50,8 @@ void render_complex(png_byte *ptr, fftw_complex val) {
     scale_log(ptr, mag);
 }
 
-void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
+void waterfall(png_structp png_ptr, FILE* fp,
+               uint32_t w, uint32_t h, format_t fmt) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
     fftw_complex *in, *out;
