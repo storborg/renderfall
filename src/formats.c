@@ -29,6 +29,7 @@ void read_samples_uint16(FILE *fp, fftw_complex *buf, uint32_t n) {
         buf[i][0] = ((double) raw[i * 2] / UINT16_MAX);
         buf[i][1] = ((double) raw[(i * 2) + 1] / UINT16_MAX);
     }
+    free(raw);
 }
 
 void read_samples_float32(FILE *fp, fftw_complex *buf, uint32_t n) {
@@ -39,4 +40,10 @@ void read_samples_float32(FILE *fp, fftw_complex *buf, uint32_t n) {
         buf[i][0] = (double) raw[i * 2];
         buf[i][1] = (double) raw[(i * 2) + 1];
     }
+    free(raw);
+}
+
+void read_samples_float64(FILE *fp, fftw_complex *buf, uint32_t n) {
+    size_t sample_size = 2 * sizeof(double);
+    fread(buf, sample_size, n, fp);
 }

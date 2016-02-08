@@ -45,7 +45,6 @@ void scale_linear(png_byte *ptr, float val) {
     ptr[2] = (uint8_t) (val * 4);
 }
 
-
 void render_complex(png_byte *ptr, fftw_complex val) {
     float mag = hypot(val[0], val[1]);
     scale_log(ptr, mag);
@@ -71,6 +70,8 @@ void waterfall(png_structp png_ptr, FILE* fp, int w, int h, format_t fmt) {
             read_samples_uint16(fp, in, w);
         } else if (fmt == FORMAT_FLOAT32) {
             read_samples_float32(fp, in, w);
+        } else if (fmt == FORMAT_FLOAT64) {
+            read_samples_float64(fp, in, w);
         }
 
         fftw_execute(p);

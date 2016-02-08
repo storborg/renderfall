@@ -20,3 +20,4 @@ void read_samples_int8(FILE *fp, fftw_complex *buf, uint32_t n);
 void read_samples_int16(FILE *fp, fftw_complex *buf, uint32_t n);
 void read_samples_uint16(FILE *fp, fftw_complex *buf, uint32_t n);
 void read_samples_float32(FILE *fp, fftw_complex *buf, uint32_t n);
+void read_samples_float64(FILE *fp, fftw_complex *buf, uint32_t n);
