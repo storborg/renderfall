@@ -33,6 +33,6 @@ can strip the header, and use the ``int16`` input format.
 
 ### Gallery
 
-![](/gallery/mursradio.png "MURS Spectrogram")
+![](/gallery/murs-radio.png "MURS Spectrogram")
 
 Stay tuned, more coming soon...
