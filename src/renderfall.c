@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <ctype.h>
 
+#include <getopt.h>
 #include <png.h>
 #include <fftw3.h>
 
@@ -106,18 +109,86 @@ void waterfall(png_structp png_ptr, FILE* fp,
     fftw_free(out);
 }
 
-int main(int argc, char* argv[]) {
-    char filename[255];
-    int bit_depth = 8;
-    int color_type = PNG_COLOR_TYPE_RGB;
-    format_t fmt = FORMAT_FLOAT32;
+void usage(char *arg) {
+    fprintf(stderr, "Usage: %s [-n fftsize] [-v] <filename>\n", arg);
+}
 
-    if (argc < 2) {
-        printf("Usage: %s <filename>\n", argv[0]);
+int parse_format(format_t *result, char *arg) {
+    if (strcmp(arg, "uint8")) {
+        *result = FORMAT_UINT8;
+    } else if (strcmp(arg, "int8")) {
+        *result = FORMAT_INT8;
+    } else if (strcmp(arg, "uint16")) {
+        *result = FORMAT_UINT16;
+    } else if (strcmp(arg, "int16")) {
+        *result = FORMAT_INT16;
+    } else if (strcmp(arg, "uint32")) {
+        *result = FORMAT_UINT32;
+    } else if (strcmp(arg, "int32")) {
+        *result = FORMAT_INT32;
+    } else if (strcmp(arg, "float32")) {
+        *result = FORMAT_FLOAT32;
+    } else if (strcmp(arg, "float64")) {
+        *result = FORMAT_FLOAT64;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    char filename[255];
+
+    // Default args.
+    format_t fmt = FORMAT_FLOAT32;
+    uint32_t fftsize = 2048;
+    bool verbose = false;
+
+    int c;
+
+    while ((c = getopt(argc, argv, "hvf:n:")) != -1) {
+        switch (c) {
+            case 'h':
+                usage(argv[0]);
+                return EXIT_SUCCESS;
+            case 'v':
+                verbose = true;
+                break;
+            case 'n':
+                fftsize = atoi(optarg);
+                break;
+            case 'f':
+                if (parse_format(&fmt, optarg) < 0) {
+                    fprintf(stderr, "Unknown format: %s", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            case '?':
+                if (optopt == 'c')
+                    fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                else if (isprint(optopt))
+                    fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+                else
+                    fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+                usage(argv[0]);
+                return EXIT_FAILURE;
+            default:
+                fprintf(stderr, "Error parsing arguments.\n");
+                return EXIT_FAILURE;
+        }
+    }
+
+    if ((argc - optind) > 1) {
+        fprintf(stderr, "Too many arguments.\n");
+        usage(argv[0]);
+        return EXIT_FAILURE;
+    } else if ((argc - optind) < 1) {
+        fprintf(stderr, "Must supply an input filename.\n");
+        usage(argv[0]);
         return EXIT_FAILURE;
     }
 
-    strcpy(filename, argv[1]);
+    strcpy(filename, argv[optind]);
 
     FILE *readfp = fopen(filename, "rb");
 
@@ -164,7 +235,7 @@ int main(int argc, char* argv[]) {
 
     int nsamples = size / sample_size;
 
-    uint32_t width = 2048;
+    uint32_t width = fftsize;
     uint32_t height = nsamples / width;
 
     strcat(filename, ".png");
@@ -200,7 +271,7 @@ int main(int argc, char* argv[]) {
 
     png_init_io(png_ptr, writefp);
     png_set_IHDR(png_ptr, info_ptr, width, height,
-                 bit_depth, color_type, PNG_INTERLACE_NONE,
+                 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(png_ptr, info_ptr);
 
