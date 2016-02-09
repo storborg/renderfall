@@ -110,7 +110,9 @@ void waterfall(png_structp png_ptr, FILE* fp,
 }
 
 void usage(char *arg) {
-    fprintf(stderr, "Usage: %s [-n fftsize] [-v] <filename>\n", arg);
+    fprintf(stderr,
+            "Usage: %s [-n fftsize] [-f format] [-v] <filename>\n",
+            arg);
 }
 
 int parse_format(format_t *result, char *arg) {
