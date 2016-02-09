@@ -31,6 +31,22 @@ window_t make_window_square(uint32_t n) {
     return win;
 }
 
+window_t make_window_gaussian(uint32_t n, double beta) {
+    double *coeffs = (double*) malloc(n * sizeof(double));
+    printf("Using a Gaussian window of size %d, beta %0.3f\n", n, beta);
+
+    double arg;
+    for (uint32_t k = 0; k < n; k++) {
+        arg = (beta * (1.0 - ((double) k / (double) n) * 2.0));
+        coeffs[k] = exp(-0.5 * (arg * arg));
+    }
+
+    window_t win;
+    win.size = n;
+    win.coeffs = coeffs;
+    return win;
+}
+
 void destroy_window(window_t win) {
     free(win.coeffs);
 }
