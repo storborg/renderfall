@@ -31,8 +31,19 @@ can strip the header, and use the ``int16`` input format.
 
     $ renderfall data.samples
 
+For more options, see:
+
+    $ renderfall -h
+
 ### Gallery
 
-![](/gallery/murs-radio.png "MURS Spectrogram")
+FM Band, from 87.9MHz to 107.9MHz, with a Hann window
+
+![](/gallery/fm-band-hann.png "FM Band")
+
+
+A MURS Radio
+
+![](/gallery/murs-radio.png "MURS")
 
 Stay tuned, more coming soon...
