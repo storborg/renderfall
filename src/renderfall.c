@@ -27,8 +27,8 @@ void waterfall(png_structp png_ptr, FILE* fp,
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
     p = fftw_plan_dft_1d(w, inter, out, FFTW_FORWARD, FFTW_PATIENT);
 
-    //window_t win = make_window_hann(w);
-    window_t win = make_window_gaussian(w, 9.56);
+    window_t win = make_window_hann(w);
+    //window_t win = make_window_gaussian(w, 8.00);
     //window_t win = make_window_square(w);
     uint32_t half = w / 2;
     uint32_t x, y;
