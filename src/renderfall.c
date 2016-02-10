@@ -67,7 +67,7 @@ void waterfall(png_structp png_ptr, FILE* fp,
 
 void usage(char *arg) {
     fprintf(stderr,
-            "Usage: %s [-n fftsize] [-f format] [-v] <filename>\n",
+            "Usage: %s [-n fftsize] [-f format] [-o out] [-v] <in>\n",
             arg);
 }
 
@@ -95,7 +95,9 @@ int parse_format(format_t *result, char *arg) {
 }
 
 int main(int argc, char *argv[]) {
-    char filename[255];
+    char infile[255];
+    char outfile[255] = "";
+    char fmt_s[255];
 
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
@@ -104,7 +106,7 @@ int main(int argc, char *argv[]) {
 
     int c;
 
-    while ((c = getopt(argc, argv, "hvf:n:")) != -1) {
+    while ((c = getopt(argc, argv, "hvf:n:o:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -116,10 +118,14 @@ int main(int argc, char *argv[]) {
                 fftsize = atoi(optarg);
                 break;
             case 'f':
-                if (parse_format(&fmt, optarg) < 0) {
+                strcpy(fmt_s, optarg);
+                if (parse_format(&fmt, fmt_s) < 0) {
                     fprintf(stderr, "Unknown format: %s", optarg);
                     return EXIT_FAILURE;
                 }
+                break;
+            case 'o':
+                strcpy(outfile, optarg);
                 break;
             case '?':
                 if (optopt == 'c')
@@ -146,9 +152,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    strcpy(filename, argv[optind]);
+    strcpy(infile, argv[optind]);
 
-    FILE *readfp = fopen(filename, "rb");
+    FILE *readfp = fopen(infile, "rb");
 
     fseek(readfp, 0, SEEK_END);
     int size = ftell(readfp);
@@ -196,13 +202,17 @@ int main(int argc, char *argv[]) {
     uint32_t width = fftsize;
     uint32_t height = nsamples / width;
 
-    strcat(filename, ".png");
+    if (!strcmp(outfile, "")) {
+        strcpy(outfile, infile);
+        strcat(outfile, ".png");
+    }
 
-    printf("Writing %d x %d output to %s...\n", width, height, filename);
+    printf("Reading %s samples for %s...\n", fmt_s, infile);
+    printf("Writing %d x %d output to %s...\n", width, height, outfile);
 
-    FILE *writefp = fopen(filename, "wb");
+    FILE *writefp = fopen(outfile, "wb");
     if (!writefp) {
-        fprintf(stderr, "Error: failed to write to %s.\n", filename);
+        fprintf(stderr, "Error: failed to write to %s.\n", outfile);
         return EXIT_FAILURE;
     }
 
