@@ -8,7 +8,6 @@
 
 window_t make_window_hann(uint32_t n) {
     double *coeffs = (double*) malloc(n * sizeof(double));
-    printf("Using a Hann window of size %d.\n", n);
     for (uint32_t k = 0; k < n; k++) {
         coeffs[k] = (1 - cos((2.0f * M_PI * k) / (n - 1))) / 2.0f;
     }
@@ -21,7 +20,6 @@ window_t make_window_hann(uint32_t n) {
 
 window_t make_window_square(uint32_t n) {
     double *coeffs = (double*) malloc(n * sizeof(double));
-    printf("Using a square window.\n");
     for (uint32_t k = 0; k < n; k++) {
         coeffs[k] = 1.0f;
     }
@@ -33,7 +31,6 @@ window_t make_window_square(uint32_t n) {
 
 window_t make_window_gaussian(uint32_t n, double beta) {
     double *coeffs = (double*) malloc(n * sizeof(double));
-    printf("Using a Gaussian window of size %d, beta %0.3f\n", n, beta);
 
     double arg;
     for (uint32_t k = 0; k < n; k++) {
