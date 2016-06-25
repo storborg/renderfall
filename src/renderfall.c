@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     int c;
 
-    while ((c = getopt(argc, argv, "hvf:n:o:s:")) != -1) {
+    while ((c = getopt(argc, argv, "hvf:n:o:s:w:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
