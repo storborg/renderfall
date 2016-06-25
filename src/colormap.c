@@ -12,13 +12,13 @@ int32_t maxval = 0;
 int32_t minval = INT32_MAX;
 
 void scale_log(png_byte *ptr, double val) {
-    // Make a monochromatic purple output for now.
+    // Make a monochromatic black-on-white output for now.
     double db = log10(val);
     if (db > maxdb) maxdb = db;
     if (db < mindb) mindb = db;
 
     // Kind of arbitrarily picked.
-    int32_t v = (int32_t) ((db * 85.0f) + 50.0f);
+    int32_t v = (int32_t) ((db * 85.0f) + 200.0f);
 
     if (v > maxval) maxval = v;
     if (v < minval) minval = v;
