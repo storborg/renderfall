@@ -68,6 +68,7 @@ void usage(char *arg) {
     fprintf(stderr, "  -f <format>\tInput format: uint8, int16, float64, etc.\n");
     fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, square\n");
     fprintf(stderr, "  -o <outfile>\tOutput file path (defaults to <infile>.png)\n");
+    fprintf(stderr, "  -s <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -v \t\tPrint verbose debugging output\n");
 }
 
@@ -122,10 +123,11 @@ int main(int argc, char *argv[]) {
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
     bool verbose = false;
+    uint64_t skip = 0;
 
     int c;
 
-    while ((c = getopt(argc, argv, "hvf:n:o:")) != -1) {
+    while ((c = getopt(argc, argv, "hvf:n:o:s:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -148,6 +150,22 @@ int main(int argc, char *argv[]) {
                 break;
             case 'o':
                 strcpy(outfile, optarg);
+                break;
+            case 's':
+                {
+                    char *end = NULL;
+                    int64_t tempskip;
+                    if (optarg == NULL
+                            || ((tempskip = strtol(optarg, &end, 0 )),
+                                (end && *end ))
+                            || tempskip <= 0) {
+                        //error
+                        fprintf(stderr, "Invalid value for byte offset\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        skip = (uint64_t)tempskip;
+                    }
+                }
                 break;
             case '?':
                 if (optopt == 'c')
@@ -192,7 +210,7 @@ int main(int argc, char *argv[]) {
 
     fseek(readfp, 0, SEEK_END);
     int size = ftell(readfp);
-    fseek(readfp, 0, SEEK_SET);
+    fseek(readfp, skip, SEEK_SET);
 
     size_t sample_size;
     read_samples_fn reader;
