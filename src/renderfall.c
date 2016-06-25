@@ -30,8 +30,11 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     uint32_t half = w / 2;
     uint32_t x, y;
 
-    // Dump progress every 1/10th of the file.
-    uint32_t interval = h / 10;
+    // Update progress at some row interval
+    uint32_t interval = h / 100;
+
+    // Hide cursor
+    printf("\033[?25l");
 
     for (y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to doubles
@@ -58,9 +61,14 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
 
         // progress indicator
         if (y % interval == 0) {
-            printf("Progress: %d/10\n", (y / interval) + 1);
+            printf("\rProgress: %d%%", (y / interval) + 1);
+            fflush(stdout);
         }
     }
+
+    printf("\033[?25h");
+    printf("\r                          \r");
+    fflush(stdout);
 
     fftw_destroy_plan(p);
     fftw_free(in);
