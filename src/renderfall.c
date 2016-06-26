@@ -7,10 +7,26 @@
 // - Replace fftw with dedicated fft math??
 // - Do normalization! (Ideally in a meaningful way that does not involve two
 // passes through the whole input file.)
+// - Support real (non-complex) samples.
+// - Support time scaling.
+// - Support overlap.
+// - Add additional window functions.
+// - Color palette and transform customization.
+// - Add capture process and renderfall command line to gallery examples, and
+// add more examples. Particular emphasis on things that are easy to grab, e.g.
+// show hackrf_transfer, rtl_sdr, etc. with common ambient spectrum: airband,
+// UHF/VHF, FM audio, AM audio, wifi, LTE, audio.
+// - Switch to getopt_long() or similar and support full-word command line
+// arguments.
+// - Allow passing window function parameters.
+// - Add a manpage?
 
-// Ideas:
+// Refactoring Ideas:
 // - Separate math step and color rendering step, so that the results of the
 // former can be cached, and palette/etc tweaked more easily.
+// - Extract out a waterfall.c and waterfall.h: use a struct to pass
+// configuration parameters to the main waterfall() function instead of a super
+// long list of arguments.
 
 #include <stdio.h>
 #include <stdint.h>
