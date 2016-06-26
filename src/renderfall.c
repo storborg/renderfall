@@ -1,3 +1,17 @@
+// General TODOs:
+// - Clean up the handling of verbose / debug output
+// - Evaluate whether or not PNG output is really helping us here (vs just
+// doing bitmap or something else).
+// - Evaluate the performance tradeoffs of doing bitmap output vs PNG output,
+// particularly in terms of RAM usage.
+// - Replace fftw with dedicated fft math??
+// - Do normalization! (Ideally in a meaningful way that does not involve two
+// passes through the whole input file.)
+
+// Ideas:
+// - Separate math step and color rendering step, so that the results of the
+// former can be cached, and palette/etc tweaked more easily.
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,7 +30,7 @@
 #include "colormap.h"
 
 void waterfall(png_structp png_ptr, FILE* fp, window_t win,
-               uint32_t w, uint32_t h, read_samples_fn reader) {
+               double timescale, uint32_t w, uint32_t h, read_samples_fn reader) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
     fftw_complex *in, *out, *inter;
@@ -33,10 +47,25 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     // Update progress at some row interval
     uint32_t interval = h / 100;
 
+    uint32_t rowsamps = (uint32_t) (timescale * w);
+
+    // XXX Extract this shell interaction stuff into a separate file / set of
+    // helper functions, and only actually do wacky shell escapes and realtime
+    // progress if we are known to be running in an interactive environment.
+    // Otherwise, skip it.
+
     // Hide cursor
     printf("\033[?25l");
 
     for (y = 0; y < h; y++) {
+        // if rowsamps > w (aka timescale > 1)
+        //   read extra samples and aggregate adjacent ones with arithmatic mean
+        // elif rowsamps < w (aka timescale < 1)
+        //   slide current 'in' buffer over by rowsamps
+        //   load rowsamps samples into end of buffer
+        // elif rowsamps == w (aka timescale == 1)
+        //   load rowsamps samples into end of buffer
+
         // read an FFT-worth of complex samples and convert them to doubles
         reader(fp, in, w);
 
@@ -85,6 +114,7 @@ void usage(char *arg) {
     fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, blackman, square\n");
     fprintf(stderr, "  -o <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s <offset>\tStart at specified byte offset\n");
+    fprintf(stderr, "  -t <timescale>\tUse specified timescale (defaults to 1x)\n");
     fprintf(stderr, "  -v \t\tPrint verbose debugging output\n");
 }
 
@@ -141,12 +171,13 @@ int main(int argc, char *argv[]) {
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
+    float timescale = 1.0;
     bool verbose = false;
     uint64_t skip = 0;
 
     int c;
 
-    while ((c = getopt(argc, argv, "hvf:n:o:s:w:")) != -1) {
+    while ((c = getopt(argc, argv, "hvf:n:o:s:w:t:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -156,6 +187,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'n':
                 fftsize = atoi(optarg);
+                break;
+            case 't':
+                timescale = atof(optarg);
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
@@ -318,7 +352,7 @@ int main(int argc, char *argv[]) {
     png_write_info(png_ptr, info_ptr);
 
     if (verbose) printf("Rendering (this may take a while)...\n");
-    waterfall(png_ptr, readfp, win, width, height, reader);
+    waterfall(png_ptr, readfp, win, timescale, width, height, reader);
 
     if (verbose) printf("Writing PNG footer...\n");
     png_write_end(png_ptr, NULL);
@@ -332,7 +366,7 @@ int main(int argc, char *argv[]) {
 
     destroy_window(win);
 
-    print_scale_stats();
+    if (verbose) print_scale_stats();
 
     return EXIT_SUCCESS;
 }

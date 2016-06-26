@@ -12,6 +12,9 @@ int32_t maxval = 0;
 int32_t minval = INT32_MAX;
 
 void hsv_to_rgb(double *r, double *g, double *b, double h, double s, double v) {
+    // Note that right now, hue goes from 0 to 1.0 and not 0 to 360..
+    // All input and output values are 0 to 1.0.
+
     //fprintf(stderr, "hsv_to_rgb - hue %f / sat %f / val %f\n\n", h, s, v);
     double c = 0.0, m = 0.0, x = 0.0;
 
@@ -21,6 +24,8 @@ void hsv_to_rgb(double *r, double *g, double *b, double h, double s, double v) {
     x = c * (1.0 - fabs(fmod(h / 60.0, 2) - 1.0));
     m = v - c;
 
+    // XXX Refactor this series of if statements into a case statement with a
+    // 'sector' int?
     if (h >= 0.0 && h < 60.0) {
         *r = c + m;
         *g = x + m;
