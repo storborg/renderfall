@@ -82,7 +82,7 @@ void usage(char *arg) {
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -n <fftsize>\tFFT size (power of 2)\n");
     fprintf(stderr, "  -f <format>\tInput format: uint8, int16, float64, etc.\n");
-    fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, square\n");
+    fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, blackman, square\n");
     fprintf(stderr, "  -o <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -v \t\tPrint verbose debugging output\n");
@@ -122,6 +122,9 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     } else if (!strcmp(arg, "square")) {
         if (verbose) printf("Using a square window of size %d.\n", w);
         *win = make_window_square(w);
+    } else if (!strcmp(arg, "blackman")) {
+        if (verbose) printf("Using a Blackman window of size %d.\n", w);
+        *win = make_window_blackman(w);
     } else {
         return -1;
     }
@@ -133,7 +136,7 @@ int main(int argc, char *argv[]) {
     char infile[255];
     char outfile[255] = "";
     char fmt_s[255];
-    char window_s[255] = "hann";
+    char window_s[255] = "blackman";
 
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
