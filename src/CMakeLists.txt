@@ -5,12 +5,14 @@ set(RENDERFALL_SOURCE
     formats.c
     window.c
     colormap.c
+    shell.c
 )
 
 set(RENDERFALL_HEADERS
     formats.h
     window.h
     colormap.h
+    shell.h
 )
 
 add_executable(renderfall ${RENDERFALL_SOURCE} ${RENDERFALL_HEADERS})

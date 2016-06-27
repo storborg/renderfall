@@ -41,6 +41,7 @@
 #include <png.h>
 #include <fftw3.h>
 
+#include "shell.h"
 #include "formats.h"
 #include "window.h"
 #include "colormap.h"
@@ -69,16 +70,7 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     uint32_t half = w / 2;
     uint32_t x, y;
 
-    // Update progress at some row interval
-    uint32_t interval = h / 100;
-
-    // XXX Extract this shell interaction stuff into a separate file / set of
-    // helper functions, and only actually do wacky shell escapes and realtime
-    // progress if we are known to be running in an interactive environment.
-    // Otherwise, skip it.
-
-    // Hide cursor
-    printf("\033[?25l");
+    start_progress();
 
     for (y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to doubles
@@ -112,16 +104,10 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
 
         png_write_row(png_ptr, row);
 
-        // progress indicator
-        if (y % interval == 0) {
-            printf("\rProgress: %d%%", (y / interval) + 1);
-            fflush(stdout);
-        }
+        update_progress(y, h);
     }
 
-    printf("\033[?25h");
-    printf("\r                          \r");
-    fflush(stdout);
+    end_progress();
 
     fftw_destroy_plan(p);
     fftw_free(in);
