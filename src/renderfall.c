@@ -17,11 +17,14 @@
 // UHF/VHF, FM audio, AM audio, wifi, LTE, audio.
 // - Allow passing window function parameters.
 // - Add a manpage?
+// - Do proper argument validation for numeric parameters and strings.
 
 // Refactoring Ideas:
 // - Separate math step and color rendering step, and cache the intermediate
 // step on disk, so that the palette/etc tweaked more easily, and multiple
 // passes can be made to support things like normalization.
+// - Do an array of string constants / int constants for things like formats,
+// window functions, etc.
 
 #include <stdio.h>
 #include <stdint.h>
