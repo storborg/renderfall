@@ -7,23 +7,21 @@
 // - Replace fftw with dedicated fft math??
 // - Do normalization! (Ideally in a meaningful way that does not involve two
 // passes through the whole input file.)
-// - Support real (non-complex) samples.
-// - Support time scaling.
-// - Support overlap.
-// - Add additional window functions.
+// - Support real (non-complex) samples?
+// - Support time scaling in addition to overlap?
+// - Add additional window functions. Next up probably Kaiser.
 // - Color palette and transform customization.
 // - Add capture process and renderfall command line to gallery examples, and
 // add more examples. Particular emphasis on things that are easy to grab, e.g.
 // show hackrf_transfer, rtl_sdr, etc. with common ambient spectrum: airband,
 // UHF/VHF, FM audio, AM audio, wifi, LTE, audio.
-// - Switch to getopt_long() or similar and support full-word command line
-// arguments.
 // - Allow passing window function parameters.
 // - Add a manpage?
 
 // Refactoring Ideas:
-// - Separate math step and color rendering step, so that the results of the
-// former can be cached, and palette/etc tweaked more easily.
+// - Separate math step and color rendering step, and cache the intermediate
+// step on disk, so that the palette/etc tweaked more easily, and multiple
+// passes can be made to support things like normalization.
 
 #include <stdio.h>
 #include <stdint.h>
