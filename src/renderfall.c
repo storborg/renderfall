@@ -24,9 +24,6 @@
 // Refactoring Ideas:
 // - Separate math step and color rendering step, so that the results of the
 // former can be cached, and palette/etc tweaked more easily.
-// - Extract out a waterfall.c and waterfall.h: use a struct to pass
-// configuration parameters to the main waterfall() function instead of a super
-// long list of arguments.
 
 #include <stdio.h>
 #include <stdint.h>
@@ -46,7 +43,6 @@
 #include "window.h"
 #include "colormap.h"
 
-
 void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
     for (uint32_t i = 0; i < (size - shift); i++) {
         arr[i][0] = arr[i + shift][0];
@@ -54,39 +50,45 @@ void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
     }
 }
 
-void waterfall(png_structp png_ptr, FILE* fp, window_t win,
-               uint32_t overlap,
-               uint32_t w, uint32_t h, read_samples_fn reader) {
-    png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
+typedef struct {
+    window_t win;
+    uint32_t overlap;
+    uint32_t fftsize;
+    uint32_t frames;
+    read_samples_fn reader;
+} waterfall_params_t;
+
+void waterfall(png_structp png_ptr, FILE* fp, waterfall_params_t params) {
+    png_bytep row = (png_bytep) malloc(3 * params.fftsize * sizeof(png_byte));
 
     fftw_complex *in, *out, *inter;
     fftw_plan p;
 
-    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    inter = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * w);
-    p = fftw_plan_dft_1d(w, inter, out, FFTW_FORWARD, FFTW_PATIENT);
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    inter = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    p = fftw_plan_dft_1d(params.fftsize, inter, out, FFTW_FORWARD, FFTW_PATIENT);
 
-    uint32_t half = w / 2;
+    uint32_t half = params.fftsize / 2;
     uint32_t x, y;
 
     start_progress();
 
-    for (y = 0; y < h; y++) {
+    for (y = 0; y < params.frames; y++) {
         // read an FFT-worth of complex samples and convert them to doubles
 
         // if overlap is nonzero, left shift the 'in' array by the overlap
         // amount first
-        if (overlap > 0) {
-            shiftleft(in, w, overlap);
+        if (params.overlap > 0) {
+            shiftleft(in, params.fftsize, params.overlap);
         }
 
         // read in fft size minus overlap, starting at overlap offset into
         // array
-        reader(fp, in + overlap, w - overlap);
+        params.reader(fp, in + params.overlap, params.fftsize - params.overlap);
 
         // apply a window we created earlier
-        apply_window(win, in, inter);
+        apply_window(params.win, in, inter);
 
         fftw_execute(p);
 
@@ -98,13 +100,13 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
         }
 
         // second half (positive frequencies)
-        for (x = half; x < w; x++) {
+        for (x = half; x < params.fftsize; x++) {
             render_complex(&(row[x * 3]), out[x - half]);
         }
 
         png_write_row(png_ptr, row);
 
-        update_progress(y, h);
+        update_progress(y, params.frames);
     }
 
     end_progress();
@@ -180,10 +182,12 @@ int main(int argc, char *argv[]) {
 
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
-    uint32_t fftsize = 2048;
-    uint32_t overlap = 0;
     static int verbose = 0;
     uint64_t skip = 0;
+
+    waterfall_params_t params;
+    params.overlap = 0;
+    params.fftsize = 2048;
 
     int c;
     static struct option long_options[] =
@@ -217,10 +221,10 @@ int main(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'n':
-                fftsize = atoi(optarg);
+                params.fftsize = atoi(optarg);
                 break;
             case 'l':
-                overlap = atoi(optarg);
+                params.overlap = atoi(optarg);
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
@@ -277,10 +281,11 @@ int main(int argc, char *argv[]) {
     }
 
     window_t win;
-    if (prepare_window(&win, window_s, fftsize, verbose) < 0) {
+    if (prepare_window(&win, window_s, params.fftsize, verbose) < 0) {
         fprintf(stderr, "Unknown window function: %s", window_s);
         return EXIT_FAILURE;
     }
+    params.win = win;
 
     if (verbose) printf("Opening input file...\n");
 
@@ -332,15 +337,16 @@ int main(int argc, char *argv[]) {
             reader = read_samples_float64;
             break;
     }
+    params.reader = reader;
 
     int nsamples = size / sample_size;
 
-    if (overlap > fftsize) {
-        fprintf(stderr, "Overlap of %d is greater than FFT frame size of %d.\n", overlap, fftsize);
+    if (params.overlap > params.fftsize) {
+        fprintf(stderr, "Overlap of %d is greater than FFT frame size of %d.\n", params.overlap, params.fftsize);
+        return EXIT_FAILURE;
     }
 
-    uint32_t width = fftsize;
-    uint32_t height = nsamples / (width - overlap);
+    params.frames = nsamples / (params.fftsize - params.overlap);
 
     if (!strcmp(outfile, "")) {
         strcpy(outfile, infile);
@@ -349,7 +355,7 @@ int main(int argc, char *argv[]) {
 
     if (verbose) {
         printf("Reading %s samples from %s...\n", fmt_s, infile);
-        printf("Writing %d x %d output to %s...\n", width, height, outfile);
+        printf("Writing %d x %d output to %s...\n", params.fftsize, params.frames, outfile);
     }
 
     FILE *writefp = fopen(outfile, "wb");
@@ -381,13 +387,13 @@ int main(int argc, char *argv[]) {
 
     if (verbose) printf("Writing PNG header..\n");
     png_init_io(png_ptr, writefp);
-    png_set_IHDR(png_ptr, info_ptr, width, height,
+    png_set_IHDR(png_ptr, info_ptr, params.fftsize, params.frames,
                  8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(png_ptr, info_ptr);
 
     if (verbose) printf("Rendering (this may take a while)...\n");
-    waterfall(png_ptr, readfp, win, overlap, width, height, reader);
+    waterfall(png_ptr, readfp, params);
 
     if (verbose) printf("Writing PNG footer...\n");
     png_write_end(png_ptr, NULL);
