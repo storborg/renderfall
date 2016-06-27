@@ -196,11 +196,11 @@ int main(int argc, char *argv[]) {
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
     uint32_t overlap = 0;
-    static int verbose = 0;
+    int verbose = 0;
     uint64_t skip = 0;
 
     int c;
-    static struct option long_options[] =
+    struct option long_options[] =
     {
         /*These options set a flag.*/
         {"verbose", no_argument,       &verbose, 1},
