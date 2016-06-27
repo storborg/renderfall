@@ -44,6 +44,28 @@ window_t make_window_gaussian(uint32_t n, double beta) {
     return win;
 }
 
+window_t make_window_blackman(uint32_t n) {
+    double *coeffs = (double*) malloc(n * sizeof(double));
+
+    double alpha = 0.16;
+    double a0, a1, a2;
+
+    a0 = (1.0 - alpha) / 2.0;
+    a1 = 1.0 / 2.0;
+    a2 = alpha / 2.0;
+
+    for (uint32_t k = 0; k < n; k++) {
+        coeffs[k] = (a0 -
+                     (a1 * cos((2 * M_PI * k) / (n - 1))) +
+                     (a2 * cos((4 * M_PI * k) / (n - 1))));
+    }
+
+    window_t win;
+    win.size = n;
+    win.coeffs = coeffs;
+    return win;
+}
+
 void destroy_window(window_t win) {
     free(win.coeffs);
 }

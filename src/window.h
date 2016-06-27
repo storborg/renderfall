@@ -12,6 +12,7 @@ typedef struct {
 window_t make_window_hann(uint32_t n);
 window_t make_window_square(uint32_t n);
 window_t make_window_gaussian(uint32_t n, double alpha);
+window_t make_window_blackman(uint32_t n);
 
 void destroy_window(window_t win);
 

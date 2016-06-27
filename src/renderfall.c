@@ -1,3 +1,33 @@
+// General TODOs:
+// - Clean up the handling of verbose / debug output
+// - Evaluate whether or not PNG output is really helping us here (vs just
+// doing bitmap or something else).
+// - Evaluate the performance tradeoffs of doing bitmap output vs PNG output,
+// particularly in terms of RAM usage.
+// - Replace fftw with dedicated fft math??
+// - Do normalization! (Ideally in a meaningful way that does not involve two
+// passes through the whole input file.)
+// - Support real (non-complex) samples.
+// - Support time scaling.
+// - Support overlap.
+// - Add additional window functions.
+// - Color palette and transform customization.
+// - Add capture process and renderfall command line to gallery examples, and
+// add more examples. Particular emphasis on things that are easy to grab, e.g.
+// show hackrf_transfer, rtl_sdr, etc. with common ambient spectrum: airband,
+// UHF/VHF, FM audio, AM audio, wifi, LTE, audio.
+// - Switch to getopt_long() or similar and support full-word command line
+// arguments.
+// - Allow passing window function parameters.
+// - Add a manpage?
+
+// Refactoring Ideas:
+// - Separate math step and color rendering step, so that the results of the
+// former can be cached, and palette/etc tweaked more easily.
+// - Extract out a waterfall.c and waterfall.h: use a struct to pass
+// configuration parameters to the main waterfall() function instead of a super
+// long list of arguments.
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,7 +45,16 @@
 #include "window.h"
 #include "colormap.h"
 
+
+void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
+    for (uint32_t i = 0; i < (size - shift); i++) {
+        arr[i][0] = arr[i + shift][0];
+        arr[i][1] = arr[i + shift][1];
+    }
+}
+
 void waterfall(png_structp png_ptr, FILE* fp, window_t win,
+               uint32_t overlap,
                uint32_t w, uint32_t h, read_samples_fn reader) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
@@ -30,9 +69,29 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     uint32_t half = w / 2;
     uint32_t x, y;
 
+    // Update progress at some row interval
+    uint32_t interval = h / 100;
+
+    // XXX Extract this shell interaction stuff into a separate file / set of
+    // helper functions, and only actually do wacky shell escapes and realtime
+    // progress if we are known to be running in an interactive environment.
+    // Otherwise, skip it.
+
+    // Hide cursor
+    printf("\033[?25l");
+
     for (y = 0; y < h; y++) {
         // read an FFT-worth of complex samples and convert them to doubles
-        reader(fp, in, w);
+
+        // if overlap is nonzero, left shift the 'in' array by the overlap
+        // amount first
+        if (overlap > 0) {
+            shiftleft(in, w, overlap);
+        }
+
+        // read in fft size minus overlap, starting at overlap offset into
+        // array
+        reader(fp, in + overlap, w - overlap);
 
         // apply a window we created earlier
         apply_window(win, in, inter);
@@ -52,7 +111,17 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
         }
 
         png_write_row(png_ptr, row);
+
+        // progress indicator
+        if (y % interval == 0) {
+            printf("\rProgress: %d%%", (y / interval) + 1);
+            fflush(stdout);
+        }
     }
+
+    printf("\033[?25h");
+    printf("\r                          \r");
+    fflush(stdout);
 
     fftw_destroy_plan(p);
     fftw_free(in);
@@ -69,6 +138,7 @@ void usage(char *arg) {
     fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square\n");
     fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
+    fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
     fprintf(stderr, "  -v, --verbose \t\tPrint verbose debugging output\n");
 }
 
@@ -106,6 +176,9 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     } else if (!strcmp(arg, "square")) {
         if (verbose) printf("Using a square window of size %d.\n", w);
         *win = make_window_square(w);
+    } else if (!strcmp(arg, "blackman")) {
+        if (verbose) printf("Using a Blackman window of size %d.\n", w);
+        *win = make_window_blackman(w);
     } else {
         return -1;
     }
@@ -117,11 +190,12 @@ int main(int argc, char *argv[]) {
     char infile[255];
     char outfile[255] = "";
     char fmt_s[255];
-    char window_s[255] = "hann";
+    char window_s[255] = "blackman";
 
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
+    uint32_t overlap = 0;
     static int verbose = 0;
     uint64_t skip = 0;
 
@@ -133,18 +207,19 @@ int main(int argc, char *argv[]) {
         {"brief",   no_argument,       &verbose, 0},
         /*These options don’t set a flag.*/
         /*We distinguish them by their indices.*/
-        {"help",      no_argument,      NULL, 'h'},
+        {"help",     no_argument,      NULL, 'h'},
         {"fftsize",  required_argument, NULL, 'n'},
         {"format",   required_argument, NULL, 'f'},
         {"window",   required_argument, NULL, 'w'},
         {"outfile",  required_argument, NULL, 'o'},
         {"offset",   required_argument, NULL, 's'},
+        {"overlap",  required_argument, NULL, 'l'},
         {0, 0, 0, 0}
 
     };
 
     int option_index;
-    while ((c = getopt_long(argc, argv, "hvf:n:o:s:", long_options,&option_index )) != -1) {
+    while ((c = getopt_long(argc, argv, "hvf:n:o:s:w:l:", long_options,&option_index )) != -1) {
         switch (c) {
             case 0:
                 //Flag option
@@ -157,6 +232,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'n':
                 fftsize = atoi(optarg);
+                break;
+            case 'l':
+                overlap = atoi(optarg);
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
@@ -271,8 +349,12 @@ int main(int argc, char *argv[]) {
 
     int nsamples = size / sample_size;
 
+    if (overlap > fftsize) {
+        fprintf(stderr, "Overlap of %d is greater than FFT frame size of %d.\n", overlap, fftsize);
+    }
+
     uint32_t width = fftsize;
-    uint32_t height = nsamples / width;
+    uint32_t height = nsamples / (width - overlap);
 
     if (!strcmp(outfile, "")) {
         strcpy(outfile, infile);
@@ -319,7 +401,7 @@ int main(int argc, char *argv[]) {
     png_write_info(png_ptr, info_ptr);
 
     if (verbose) printf("Rendering (this may take a while)...\n");
-    waterfall(png_ptr, readfp, win, width, height, reader);
+    waterfall(png_ptr, readfp, win, overlap, width, height, reader);
 
     if (verbose) printf("Writing PNG footer...\n");
     png_write_end(png_ptr, NULL);
@@ -333,7 +415,7 @@ int main(int argc, char *argv[]) {
 
     destroy_window(win);
 
-    print_scale_stats();
+    if (verbose) print_scale_stats();
 
     return EXIT_SUCCESS;
 }
