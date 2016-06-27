@@ -133,13 +133,13 @@ void usage(char *arg) {
     fprintf(stderr, "Usage: %s [OPTIONS] <in>\n", arg);
     fprintf(stderr, "Render a waterfall spectrum from raw IQ samples.\n\n");
     fprintf(stderr, "Options:\n");
-    fprintf(stderr, "  -n <fftsize>\tFFT size (power of 2)\n");
-    fprintf(stderr, "  -f <format>\tInput format: uint8, int16, float64, etc.\n");
-    fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, blackman, square\n");
-    fprintf(stderr, "  -o <outfile>\tOutput file path (defaults to <infile>.png)\n");
-    fprintf(stderr, "  -s <offset>\tStart at specified byte offset\n");
-    fprintf(stderr, "  -l <overlap>\tOverlap N samples per frame (defaults to 0)\n");
-    fprintf(stderr, "  -v \t\tPrint verbose debugging output\n");
+    fprintf(stderr, "  -n, --fftsize <fftsize>\tFFT size (power of 2)\n");
+    fprintf(stderr, "  -f, --format <format>\tInput format: uint8, int16, float64, etc.\n");
+    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square\n");
+    fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
+    fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
+    fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
+    fprintf(stderr, "  -v, --verbose \t\tPrint verbose debugging output\n");
 }
 
 int parse_format(format_t *result, char *arg) {
@@ -196,13 +196,34 @@ int main(int argc, char *argv[]) {
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
     uint32_t overlap = 0;
-    bool verbose = false;
+    static int verbose = 0;
     uint64_t skip = 0;
 
     int c;
+    static struct option long_options[] =
+    {
+        /*These options set a flag.*/
+        {"verbose", no_argument,       &verbose, 1},
+        {"brief",   no_argument,       &verbose, 0},
+        /*These options don’t set a flag.*/
+        /*We distinguish them by their indices.*/
+        {"help",     no_argument,      NULL, 'h'},
+        {"fftsize",  required_argument, NULL, 'n'},
+        {"format",   required_argument, NULL, 'f'},
+        {"window",   required_argument, NULL, 'w'},
+        {"outfile",  required_argument, NULL, 'o'},
+        {"offset",   required_argument, NULL, 's'},
+        {"overlap",  required_argument, NULL, 'l'},
+        {0, 0, 0, 0}
 
-    while ((c = getopt(argc, argv, "hvf:n:o:s:w:l:")) != -1) {
+    };
+
+    int option_index;
+    while ((c = getopt_long(argc, argv, "hvf:n:o:s:w:l:", long_options,&option_index )) != -1) {
         switch (c) {
+            case 0:
+                //Flag option
+                break;
             case 'h':
                 usage(argv[0]);
                 return EXIT_SUCCESS;
