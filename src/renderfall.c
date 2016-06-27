@@ -45,8 +45,17 @@
 #include "window.h"
 #include "colormap.h"
 
+
+void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
+    for (uint32_t i = 0; i < (size - shift); i++) {
+        arr[i][0] = arr[i + shift][0];
+        arr[i][1] = arr[i + shift][1];
+    }
+}
+
 void waterfall(png_structp png_ptr, FILE* fp, window_t win,
-               double timescale, uint32_t w, uint32_t h, read_samples_fn reader) {
+               uint32_t overlap,
+               uint32_t w, uint32_t h, read_samples_fn reader) {
     png_bytep row = (png_bytep) malloc(3 * w * sizeof(png_byte));
 
     fftw_complex *in, *out, *inter;
@@ -63,8 +72,6 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     // Update progress at some row interval
     uint32_t interval = h / 100;
 
-    uint32_t rowsamps = (uint32_t) (timescale * w);
-
     // XXX Extract this shell interaction stuff into a separate file / set of
     // helper functions, and only actually do wacky shell escapes and realtime
     // progress if we are known to be running in an interactive environment.
@@ -74,16 +81,17 @@ void waterfall(png_structp png_ptr, FILE* fp, window_t win,
     printf("\033[?25l");
 
     for (y = 0; y < h; y++) {
-        // if rowsamps > w (aka timescale > 1)
-        //   read extra samples and aggregate adjacent ones with arithmatic mean
-        // elif rowsamps < w (aka timescale < 1)
-        //   slide current 'in' buffer over by rowsamps
-        //   load rowsamps samples into end of buffer
-        // elif rowsamps == w (aka timescale == 1)
-        //   load rowsamps samples into end of buffer
-
         // read an FFT-worth of complex samples and convert them to doubles
-        reader(fp, in, w);
+
+        // if overlap is nonzero, left shift the 'in' array by the overlap
+        // amount first
+        if (overlap > 0) {
+            shiftleft(in, w, overlap);
+        }
+
+        // read in fft size minus overlap, starting at overlap offset into
+        // array
+        reader(fp, in + overlap, w - overlap);
 
         // apply a window we created earlier
         apply_window(win, in, inter);
@@ -130,7 +138,7 @@ void usage(char *arg) {
     fprintf(stderr, "  -w <window>\tWindowing function: hann, gaussian, blackman, square\n");
     fprintf(stderr, "  -o <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s <offset>\tStart at specified byte offset\n");
-    fprintf(stderr, "  -t <timescale>\tUse specified timescale (defaults to 1x)\n");
+    fprintf(stderr, "  -l <overlap>\tOverlap N samples per frame (defaults to 0)\n");
     fprintf(stderr, "  -v \t\tPrint verbose debugging output\n");
 }
 
@@ -187,13 +195,13 @@ int main(int argc, char *argv[]) {
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
     uint32_t fftsize = 2048;
-    float timescale = 1.0;
+    uint32_t overlap = 0;
     bool verbose = false;
     uint64_t skip = 0;
 
     int c;
 
-    while ((c = getopt(argc, argv, "hvf:n:o:s:w:t:")) != -1) {
+    while ((c = getopt(argc, argv, "hvf:n:o:s:w:l:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -204,8 +212,8 @@ int main(int argc, char *argv[]) {
             case 'n':
                 fftsize = atoi(optarg);
                 break;
-            case 't':
-                timescale = atof(optarg);
+            case 'l':
+                overlap = atoi(optarg);
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
@@ -320,8 +328,12 @@ int main(int argc, char *argv[]) {
 
     int nsamples = size / sample_size;
 
+    if (overlap > fftsize) {
+        fprintf(stderr, "Overlap of %d is greater than FFT frame size of %d.\n", overlap, fftsize);
+    }
+
     uint32_t width = fftsize;
-    uint32_t height = nsamples / width;
+    uint32_t height = nsamples / (width - overlap);
 
     if (!strcmp(outfile, "")) {
         strcpy(outfile, infile);
@@ -368,7 +380,7 @@ int main(int argc, char *argv[]) {
     png_write_info(png_ptr, info_ptr);
 
     if (verbose) printf("Rendering (this may take a while)...\n");
-    waterfall(png_ptr, readfp, win, timescale, width, height, reader);
+    waterfall(png_ptr, readfp, win, overlap, width, height, reader);
 
     if (verbose) printf("Writing PNG footer...\n");
     png_write_end(png_ptr, NULL);
