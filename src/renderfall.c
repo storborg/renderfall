@@ -79,6 +79,10 @@ int parse_format(format_t *result, char *arg) {
     return 0;
 }
 
+static uint32_t ripple = 0;
+static uint32_t transition_width = 0;
+static uint32_t sampling_frequency = 0;
+
 int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     if (!strcmp(arg, "hann")) {
         if (verbose) printf("Using a Hann window of size %d.\n", w);
@@ -98,9 +102,6 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     } else if (!strcmp(arg, "hamming")) {
         *win = make_window_hamming(w);
     } else if (!strcmp(arg, "kaiser")) {
-        double ripple = 0;
-        double transition_width = 0;
-        double sampling_frequency = 0;
         *win = make_window_kaiser(
                 w, ripple, transition_width, sampling_frequency);
     } else if (!strcmp(arg, "parzen")) {
