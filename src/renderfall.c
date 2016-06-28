@@ -173,13 +173,16 @@ int main(int argc, char *argv[]) {
         {"brief",   no_argument,       &verbose, 0},
         /*These options don’t set a flag.*/
         /*We distinguish them by their indices.*/
-        {"help",     no_argument,      NULL, 'h'},
-        {"fftsize",  required_argument, NULL, 'n'},
-        {"format",   required_argument, NULL, 'f'},
-        {"window",   required_argument, NULL, 'w'},
-        {"outfile",  required_argument, NULL, 'o'},
-        {"offset",   required_argument, NULL, 's'},
-        {"overlap",  required_argument, NULL, 'l'},
+        {"help",      no_argument,      NULL, 'h'},
+        {"fftsize",    required_argument, NULL, 'n'},
+        {"format",     required_argument, NULL, 'f'},
+        {"window",     required_argument, NULL, 'w'},
+        {"outfile",    required_argument, NULL, 'o'},
+        {"offset",     required_argument, NULL, 's'},
+        {"overlap",    required_argument, NULL, 'l'},
+        {"ripple",     required_argument, NULL, 'r'},
+        {"transwidth", required_argument, NULL, 't'},
+        {"sampfreq",   required_argument, NULL, 'q'},
         {0, 0, 0, 0}
 
     };
@@ -197,15 +200,27 @@ int main(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'n':
-                params.fftsize = atoi(optarg);
+                if (!parse_uint32_t(optarg, &(params.fftsize))) {
+                    fprintf(stderr, "Invalid fftsize: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                if (!is_power_of_2(params.fftsize)) {
+                    fprintf(stderr,
+                            "Invalid fftsize (must be power of 2): %s\n",
+                            optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
             case 'l':
-                params.overlap = atoi(optarg);
+                if (!parse_uint32_t(optarg, &(params.overlap))) {
+                    fprintf(stderr, "Invalid overlap: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
                 if (parse_format(&fmt, fmt_s) < 0) {
-                    fprintf(stderr, "Unknown format: %s", optarg);
+                    fprintf(stderr, "Unknown format: %s\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -216,19 +231,27 @@ int main(int argc, char *argv[]) {
                 strcpy(outfile, optarg);
                 break;
             case 's':
-                {
-                    char *end = NULL;
-                    int64_t tempskip;
-                    if (optarg == NULL
-                            || ((tempskip = strtol(optarg, &end, 0 )),
-                                (end && *end ))
-                            || tempskip <= 0) {
-                        //error
-                        fprintf(stderr, "Invalid value for byte offset\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        skip = (uint64_t)tempskip;
-                    }
+                if (!parse_uint64_t(optarg, &skip)) {
+                    fprintf(stderr, "Invalid value for byte offset\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'r':
+                if (!parse_uint32_t(optarg, &ripple)) {
+                    fprintf(stderr, "Invalid value for ripple\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 't':
+                if (!parse_uint32_t(optarg, &transition_width)) {
+                    fprintf(stderr, "Invalid value for transition width\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'q':
+                if (!parse_uint32_t(optarg, &sampling_frequency)) {
+                    fprintf(stderr, "Invalid value for sampling frequency\n");
+                    return EXIT_FAILURE;
                 }
                 break;
             case '?':
