@@ -116,7 +116,7 @@ double zero_order_modified_bessel(double n) {
 }
 
 window_t make_window_kaiser(
-        uint32_t n, double ripple, double transition_width, double samp_freq) {
+        uint32_t n, uint32_t ripple, uint32_t transition_width, uint32_t samp_freq) {
     double *coeffs = (double*) malloc(n * sizeof(double));
 
     double a = -20 * log10(ripple);
@@ -150,7 +150,7 @@ window_t make_window_parzen(uint32_t n) {
 
     for (uint32_t k = 0; k < n; k++) {
         double val = 0;
-        if (k >= 0 && k <= (n/4)) {
+        if (k <= (n/4)) {
             double inner = k/(n/2);
             val = 1 - 6 * (inner * inner) * (1 - inner);
         } else if (k > (n/4) && k <= (n/2)) {
@@ -158,7 +158,6 @@ window_t make_window_parzen(uint32_t n) {
             val = 2 * inner * inner * inner;
         }
         coeffs[k] = val;
-
     }
 
     window_t win;
