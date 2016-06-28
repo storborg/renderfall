@@ -49,7 +49,7 @@ void usage(char *arg) {
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -n, --fftsize <fftsize>\tFFT size (power of 2)\n");
     fprintf(stderr, "  -f, --format <format>\tInput format: uint8, int16, float64, etc.\n");
-    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square, blackmanharris, hamming\n");
+    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square, blackmanharris, hamming, kaiser, parzen\n");
     fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
@@ -97,6 +97,13 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
         *win = make_window_blackman_harris(w);
     } else if (!strcmp(arg, "hamming")) {
         *win = make_window_hamming(w);
+    } else if (!strcmp(arg, "kaiser")) {
+        double ripple = 0;
+        double transition_width = 0;
+        double sampling_frequency = 0;
+        *win = make_window_kaiser(w, ripple, transition_width, sampling_frequency);
+    } else if (!strcmp(arg, "parzen")) {
+        *win = make_window_parzen(w);
     }else {
         return -1;
     }
