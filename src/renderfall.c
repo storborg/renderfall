@@ -49,7 +49,7 @@ void usage(char *arg) {
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -n, --fftsize <fftsize>\tFFT size (power of 2)\n");
     fprintf(stderr, "  -f, --format <format>\tInput format: uint8, int16, float64, etc.\n");
-    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square\n");
+    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square, blackmanharris, hamming, kaiser, parzen\n");
     fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
@@ -79,6 +79,10 @@ int parse_format(format_t *result, char *arg) {
     return 0;
 }
 
+static uint32_t ripple = 0;
+static uint32_t transition_width = 0;
+static uint32_t sampling_frequency = 0;
+
 int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     if (!strcmp(arg, "hann")) {
         if (verbose) printf("Using a Hann window of size %d.\n", w);
@@ -93,12 +97,58 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     } else if (!strcmp(arg, "blackman")) {
         if (verbose) printf("Using a Blackman window of size %d.\n", w);
         *win = make_window_blackman(w);
-    } else {
+    } else if (!strcmp(arg, "blackmanharris")) {
+        *win = make_window_blackman_harris(w);
+    } else if (!strcmp(arg, "hamming")) {
+        *win = make_window_hamming(w);
+    } else if (!strcmp(arg, "kaiser")) {
+        *win = make_window_kaiser(
+                w, ripple, transition_width, sampling_frequency);
+    } else if (!strcmp(arg, "parzen")) {
+        *win = make_window_parzen(w);
+    }else {
         return -1;
     }
     return 0;
 }
 
+bool parse_int64_t(char* arg, int64_t* dest) {
+    char *end = NULL;
+    int64_t val = strtol(arg, &end, 0);
+    if (optarg == NULL
+            || ((val = strtol(optarg, &end, 0 )),
+                (end && *end ))) {
+        return false;
+    }
+    *dest = val;
+    return true;
+}
+
+bool parse_uint64_t(char* arg, uint64_t* dest) {
+    int64_t val;
+    if (parse_int64_t(arg, &val)) {
+        if (val >= 0) {
+            *dest = (uint64_t)val;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool parse_uint32_t(char* arg, uint32_t *dest) {
+    uint64_t val;
+    if (parse_uint64_t(arg,&val)) {
+        if (val <= UINT32_MAX) {
+            *dest = (uint32_t) val;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool is_power_of_2(uint32_t n) {
+    return (n & (n-1)) == 0;
+}
 
 int main(int argc, char *argv[]) {
     char infile[255];
@@ -108,7 +158,7 @@ int main(int argc, char *argv[]) {
 
     // Default args.
     format_t fmt = FORMAT_FLOAT32;
-    static int verbose = 0;
+    int verbose = 0;
     uint64_t skip = 0;
 
     waterfall_params_t params;
@@ -116,20 +166,23 @@ int main(int argc, char *argv[]) {
     params.fftsize = 2048;
 
     int c;
-    static struct option long_options[] =
+    struct option long_options[] =
     {
         /*These options set a flag.*/
         {"verbose", no_argument,       &verbose, 1},
         {"brief",   no_argument,       &verbose, 0},
         /*These options don’t set a flag.*/
         /*We distinguish them by their indices.*/
-        {"help",     no_argument,      NULL, 'h'},
-        {"fftsize",  required_argument, NULL, 'n'},
-        {"format",   required_argument, NULL, 'f'},
-        {"window",   required_argument, NULL, 'w'},
-        {"outfile",  required_argument, NULL, 'o'},
-        {"offset",   required_argument, NULL, 's'},
-        {"overlap",  required_argument, NULL, 'l'},
+        {"help",      no_argument,      NULL, 'h'},
+        {"fftsize",    required_argument, NULL, 'n'},
+        {"format",     required_argument, NULL, 'f'},
+        {"window",     required_argument, NULL, 'w'},
+        {"outfile",    required_argument, NULL, 'o'},
+        {"offset",     required_argument, NULL, 's'},
+        {"overlap",    required_argument, NULL, 'l'},
+        {"ripple",     required_argument, NULL, 'r'},
+        {"transwidth", required_argument, NULL, 't'},
+        {"sampfreq",   required_argument, NULL, 'q'},
         {0, 0, 0, 0}
 
     };
@@ -147,15 +200,27 @@ int main(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'n':
-                params.fftsize = atoi(optarg);
+                if (!parse_uint32_t(optarg, &(params.fftsize))) {
+                    fprintf(stderr, "Invalid fftsize: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                if (!is_power_of_2(params.fftsize)) {
+                    fprintf(stderr,
+                            "Invalid fftsize (must be power of 2): %s\n",
+                            optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
             case 'l':
-                params.overlap = atoi(optarg);
+                if (!parse_uint32_t(optarg, &(params.overlap))) {
+                    fprintf(stderr, "Invalid overlap: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
             case 'f':
                 strcpy(fmt_s, optarg);
                 if (parse_format(&fmt, fmt_s) < 0) {
-                    fprintf(stderr, "Unknown format: %s", optarg);
+                    fprintf(stderr, "Unknown format: %s\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -166,19 +231,27 @@ int main(int argc, char *argv[]) {
                 strcpy(outfile, optarg);
                 break;
             case 's':
-                {
-                    char *end = NULL;
-                    int64_t tempskip;
-                    if (optarg == NULL
-                            || ((tempskip = strtol(optarg, &end, 0 )),
-                                (end && *end ))
-                            || tempskip <= 0) {
-                        //error
-                        fprintf(stderr, "Invalid value for byte offset\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        skip = (uint64_t)tempskip;
-                    }
+                if (!parse_uint64_t(optarg, &skip)) {
+                    fprintf(stderr, "Invalid value for byte offset\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'r':
+                if (!parse_uint32_t(optarg, &ripple)) {
+                    fprintf(stderr, "Invalid value for ripple\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 't':
+                if (!parse_uint32_t(optarg, &transition_width)) {
+                    fprintf(stderr, "Invalid value for transition width\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'q':
+                if (!parse_uint32_t(optarg, &sampling_frequency)) {
+                    fprintf(stderr, "Invalid value for sampling frequency\n");
+                    return EXIT_FAILURE;
                 }
                 break;
             case '?':
