@@ -101,7 +101,8 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
         double ripple = 0;
         double transition_width = 0;
         double sampling_frequency = 0;
-        *win = make_window_kaiser(w, ripple, transition_width, sampling_frequency);
+        *win = make_window_kaiser(
+                w, ripple, transition_width, sampling_frequency);
     } else if (!strcmp(arg, "parzen")) {
         *win = make_window_parzen(w);
     }else {
