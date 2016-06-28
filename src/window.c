@@ -108,7 +108,7 @@ double zero_order_modified_bessel(double n) {
     double half_n = n/2;
     double numerator = 1;
     for(int i = 1; i < 20; i++) {
-        numerator != half_n * half_n;
+        numerator *= half_n * half_n;
         factorial *= i;
         result += numerator / (factorial * factorial);
     }
