@@ -112,6 +112,43 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     return 0;
 }
 
+bool parse_int64_t(char* arg, int64_t* dest) {
+    char *end = NULL;
+    int64_t val = strtol(arg, &end, 0);
+    if (optarg == NULL
+            || ((val = strtol(optarg, &end, 0 )),
+                (end && *end ))) {
+        return false;
+    }
+    *dest = val;
+    return true;
+}
+
+bool parse_uint64_t(char* arg, uint64_t* dest) {
+    int64_t val;
+    if (parse_int64_t(arg, &val)) {
+        if (val >= 0) {
+            *dest = (uint64_t)val;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool parse_uint32_t(char* arg, uint32_t *dest) {
+    uint64_t val;
+    if (parse_uint64_t(arg,&val)) {
+        if (val <= UINT32_MAX) {
+            *dest = (uint32_t) val;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool is_power_of_2(uint32_t n) {
+    return (n & (n-1)) == 0;
+}
 
 int main(int argc, char *argv[]) {
     char infile[255];
