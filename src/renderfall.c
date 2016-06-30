@@ -112,7 +112,7 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     return 0;
 }
 
-bool parse_int64_t(char* arg, int64_t* dest) {
+bool parse_int64_t(char *arg, int64_t *dest) {
     char *end = NULL;
     int64_t val = strtol(arg, &end, 0);
     if (optarg == NULL
@@ -124,7 +124,7 @@ bool parse_int64_t(char* arg, int64_t* dest) {
     return true;
 }
 
-bool parse_uint64_t(char* arg, uint64_t* dest) {
+bool parse_uint64_t(char *arg, uint64_t *dest) {
     int64_t val;
     if (parse_int64_t(arg, &val)) {
         if (val >= 0) {
@@ -135,7 +135,7 @@ bool parse_uint64_t(char* arg, uint64_t* dest) {
     return false;
 }
 
-bool parse_uint32_t(char* arg, uint32_t *dest) {
+bool parse_uint32_t(char *arg, uint32_t *dest) {
     uint64_t val;
     if (parse_uint64_t(arg,&val)) {
         if (val <= UINT32_MAX) {
