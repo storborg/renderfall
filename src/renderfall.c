@@ -146,6 +146,18 @@ bool parse_uint32_t(char *arg, uint32_t *dest) {
     return false;
 }
 
+bool parse_double(char *arg, double *dest) {
+    char *end = NULL;
+    double val;
+    if (optarg == NULL
+            || ((val = strtod(arg, &end)),
+                (end && *end ))) {
+        return false;
+    }
+    *dest = val;
+    return true;
+}
+
 bool is_power_of_2(uint32_t n) {
     return (n & (n-1)) == 0;
 }
