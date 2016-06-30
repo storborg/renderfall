@@ -100,8 +100,7 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     } else if (!strcmp(arg, "hamming")) {
         *win = make_window_hamming(w);
     } else if (!strcmp(arg, "kaiser")) {
-        *win = make_window_kaiser(
-                w, beta);
+        *win = make_window_kaiser(w, beta);
     } else if (!strcmp(arg, "parzen")) {
         *win = make_window_parzen(w);
     }else {
