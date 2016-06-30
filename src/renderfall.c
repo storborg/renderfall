@@ -114,9 +114,9 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
 
 bool parse_int64_t(char *arg, int64_t *dest) {
     char *end = NULL;
-    int64_t val = strtol(arg, &end, 0);
+    int64_t val;
     if (optarg == NULL
-            || ((val = strtol(optarg, &end, 0 )),
+            || ((val = strtol(arg, &end, 0 )),
                 (end && *end ))) {
         return false;
     }
