@@ -79,9 +79,7 @@ int parse_format(format_t *result, char *arg) {
     return 0;
 }
 
-static uint32_t ripple = 0;
-static uint32_t transition_width = 0;
-static uint32_t sampling_frequency = 0;
+static double beta = 0;
 
 int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
     if (!strcmp(arg, "hann")) {
@@ -103,7 +101,7 @@ int prepare_window(window_t *win, char *arg, uint32_t w, bool verbose) {
         *win = make_window_hamming(w);
     } else if (!strcmp(arg, "kaiser")) {
         *win = make_window_kaiser(
-                w, ripple, transition_width, sampling_frequency);
+                w, beta);
     } else if (!strcmp(arg, "parzen")) {
         *win = make_window_parzen(w);
     }else {
@@ -192,9 +190,7 @@ int main(int argc, char *argv[]) {
         {"outfile",    required_argument, NULL, 'o'},
         {"offset",     required_argument, NULL, 's'},
         {"overlap",    required_argument, NULL, 'l'},
-        {"ripple",     required_argument, NULL, 'r'},
-        {"transwidth", required_argument, NULL, 't'},
-        {"sampfreq",   required_argument, NULL, 'q'},
+        {"beta",       required_argument, NULL, 'b'},
         {0, 0, 0, 0}
 
     };
@@ -248,24 +244,11 @@ int main(int argc, char *argv[]) {
                     return EXIT_FAILURE;
                 }
                 break;
-            case 'r':
-                if (!parse_uint32_t(optarg, &ripple)) {
-                    fprintf(stderr, "Invalid value for ripple\n");
-                    return EXIT_FAILURE;
+            case 'b':
+                if (!parse_double(optarg, &beta)) {
+                     fprintf(stderr, "Invalid value for beta\n");
+                     return EXIT_FAILURE;
                 }
-                break;
-            case 't':
-                if (!parse_uint32_t(optarg, &transition_width)) {
-                    fprintf(stderr, "Invalid value for transition width\n");
-                    return EXIT_FAILURE;
-                }
-                break;
-            case 'q':
-                if (!parse_uint32_t(optarg, &sampling_frequency)) {
-                    fprintf(stderr, "Invalid value for sampling frequency\n");
-                    return EXIT_FAILURE;
-                }
-                break;
             case '?':
                 if (optopt == 'c')
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);

@@ -115,26 +115,12 @@ double zero_order_modified_bessel(double n) {
     return result;
 }
 
-window_t make_window_kaiser(
-        uint32_t n, uint32_t ripple, uint32_t transition_width, uint32_t samp_freq) {
+window_t make_window_kaiser(uint32_t n, double beta) {
     double *coeffs = (double*) malloc(n * sizeof(double));
-
-    double a = -20 * log10(ripple);
-    double tw = 2 * M_PI * (transition_width / samp_freq);
-    int m = a > 21 ? ceil((a - 7.95) / (2.285 * tw)) : ceil(5.79/tw);
-
-    double beta;
-    if (a <= 21) {
-        beta = 0.0;
-    } else if (a <= 50 && a > 21) {
-        beta = 0.5842 * pow(a - 21, 0.4) + 0.07886 * (a - 21);
-    } else if (a > 50) {
-        beta = 0.1102 * (a - 8.7);
-    }
 
     double denominator = zero_order_modified_bessel(beta);
     for (uint32_t k = 0; k < n; k++) {
-        double inner_val = ((2*n)/m) - 1;
+        double inner_val = 1 - (k/n);
         coeffs[k] = zero_order_modified_bessel(
                 beta * sqrt((1 - (inner_val * inner_val)))) / denominator;
     }

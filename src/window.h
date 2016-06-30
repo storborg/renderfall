@@ -15,7 +15,7 @@ window_t make_window_gaussian(uint32_t n, double alpha);
 window_t make_window_blackman(uint32_t n);
 window_t make_window_blackman_harris(uint32_t n);
 window_t make_window_hamming(uint32_t n);
-window_t make_window_kaiser(uint32_t n, uint32_t ripple, uint32_t transition_width, uint32_t sample_freq);
+window_t make_window_kaiser(uint32_t n, double beta);
 window_t make_window_parzen(uint32_t n);
 
 void destroy_window(window_t win);
