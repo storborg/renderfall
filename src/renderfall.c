@@ -48,8 +48,8 @@ void usage(char *arg) {
     fprintf(stderr, "Render a waterfall spectrum from raw IQ samples.\n\n");
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -n, --fftsize <fftsize>\tFFT size (power of 2)\n");
-    fprintf(stderr, "  -f, --format <format>\tInput format: uint8, int16, float64, etc.\n");
-    fprintf(stderr, "  -w, --window <window>\tWindowing function: hann, gaussian, square, blackmanharris, hamming, kaiser, parzen\n");
+    fprintf(stderr, "  -f, --format  <format>\tInput format: uint8, int16, float64, etc.\n");
+    fprintf(stderr, "  -w, --window  <window>\tWindowing function: hann, gaussian, square, blackmanharris, hamming, kaiser, parzen\n");
     fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
