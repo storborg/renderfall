@@ -28,6 +28,9 @@ void waterfall(png_structp png_ptr, FILE* fp, waterfall_params_t params) {
     uint32_t half = params.fftsize / 2;
     uint32_t x, y;
 
+    uint64_t processed_samples = 0;
+    uint64_t samples_per_frame = params.fftsize - params.overlap;
+
     start_progress();
 
     for (y = 0; y < params.frames; y++) {
@@ -63,6 +66,11 @@ void waterfall(png_structp png_ptr, FILE* fp, waterfall_params_t params) {
         png_write_row(png_ptr, row);
 
         update_progress(y, params.frames);
+
+        processed_samples += samples_per_frame;
+        if (params.clip > 0 && processed_samples >= params.clip) {
+            break;
+        }
     }
 
     end_progress();

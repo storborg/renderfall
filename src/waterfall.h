@@ -12,6 +12,7 @@ typedef struct {
     uint32_t overlap;
     uint32_t fftsize;
     uint32_t frames;
+    uint64_t clip;
     read_samples_fn reader;
 } waterfall_params_t;
 

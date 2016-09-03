@@ -53,6 +53,7 @@ void usage(char *arg) {
     fprintf(stderr, "  -o, --outfile <outfile>\tOutput file path (defaults to <infile>.png)\n");
     fprintf(stderr, "  -s, --offset  <offset>\tStart at specified byte offset\n");
     fprintf(stderr, "  -l, --overlap <overlap>\tOverlap N samples per frame (defaults to 0)\n");
+    fprintf(stderr, "  -c, --clip <clip>\tRead only the first N samples from the file\n");
     fprintf(stderr, "  -v, --verbose \t\tPrint verbose debugging output\n");
 }
 
@@ -173,6 +174,7 @@ int main(int argc, char *argv[]) {
     waterfall_params_t params;
     params.overlap = 0;
     params.fftsize = 2048;
+    params.clip = 0;
 
     int c;
     struct option long_options[] =
@@ -189,6 +191,7 @@ int main(int argc, char *argv[]) {
         {"outfile",    required_argument, NULL, 'o'},
         {"offset",     required_argument, NULL, 's'},
         {"overlap",    required_argument, NULL, 'l'},
+        {"clip",       required_argument, NULL, 'c'},
         {"beta",       required_argument, NULL, 'b'},
         {0, 0, 0, 0}
 
@@ -245,8 +248,13 @@ int main(int argc, char *argv[]) {
                 break;
             case 'b':
                 if (!parse_double(optarg, &beta)) {
-                     fprintf(stderr, "Invalid value for beta\n");
-                     return EXIT_FAILURE;
+                    fprintf(stderr, "Invalid value for beta\n");
+                    return EXIT_FAILURE;
+                }
+            case 'c':
+                if (!parse_uint64_t(optarg, &(params.clip))) {
+                    fprintf(stderr, "Invalid value for clip\n");
+                    return EXIT_FAILURE;
                 }
             case '?':
                 if (optopt == 'c')
