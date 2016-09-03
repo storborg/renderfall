@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
     };
 
     int option_index;
-    while ((c = getopt_long(argc, argv, "hvf:n:o:s:w:l:", long_options,&option_index )) != -1) {
+    while ((c = getopt_long(argc, argv, "hvf:n:o:s:w:l:c:", long_options,&option_index )) != -1) {
         switch (c) {
             case 0:
                 //Flag option
@@ -251,11 +251,13 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "Invalid value for beta\n");
                     return EXIT_FAILURE;
                 }
+                break;
             case 'c':
                 if (!parse_uint64_t(optarg, &(params.clip))) {
                     fprintf(stderr, "Invalid value for clip\n");
                     return EXIT_FAILURE;
                 }
+                break;
             case '?':
                 if (optopt == 'c')
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -340,7 +342,10 @@ int main(int argc, char *argv[]) {
     }
     params.reader = reader;
 
-    int nsamples = size / sample_size;
+    uint64_t nsamples = size / sample_size;
+    if ((params.clip > 0) && (nsamples > params.clip)) {
+        nsamples = params.clip;
+    }
 
     if (params.overlap > params.fftsize) {
         fprintf(stderr, "Overlap of %d is greater than FFT frame size of %d.\n", params.overlap, params.fftsize);
