@@ -1,13 +1,13 @@
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <math.h>
 
 #include <fftw3.h>
 
 #include "window.h"
 
 window_t make_window_hann(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
     for (uint32_t k = 0; k < n; k++) {
         coeffs[k] = (1 - cos((2.0f * M_PI * k) / (n - 1))) / 2.0f;
     }
@@ -19,7 +19,7 @@ window_t make_window_hann(uint32_t n) {
 }
 
 window_t make_window_square(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
     for (uint32_t k = 0; k < n; k++) {
         coeffs[k] = 1.0f;
     }
@@ -30,11 +30,11 @@ window_t make_window_square(uint32_t n) {
 }
 
 window_t make_window_gaussian(uint32_t n, double beta) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
 
     double arg;
     for (uint32_t k = 0; k < n; k++) {
-        arg = (beta * (1.0 - ((double) k / (double) n) * 2.0));
+        arg = (beta * (1.0 - ((double)k / (double)n) * 2.0));
         coeffs[k] = exp(-0.5 * (arg * arg));
     }
 
@@ -45,7 +45,7 @@ window_t make_window_gaussian(uint32_t n, double beta) {
 }
 
 window_t make_window_blackman(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
 
     double alpha = 0.16;
     double a0, a1, a2;
@@ -55,8 +55,7 @@ window_t make_window_blackman(uint32_t n) {
     a2 = alpha / 2.0;
 
     for (uint32_t k = 0; k < n; k++) {
-        coeffs[k] = (a0 -
-                     (a1 * cos((2 * M_PI * k) / (n - 1))) +
+        coeffs[k] = (a0 - (a1 * cos((2 * M_PI * k) / (n - 1))) +
                      (a2 * cos((4 * M_PI * k) / (n - 1))));
     }
 
@@ -67,13 +66,13 @@ window_t make_window_blackman(uint32_t n) {
 }
 
 window_t make_window_hamming(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
     double alpha = 0.54;
     double beta = 0.46;
     double constant = alpha - beta;
 
     for (uint32_t k = 0; k < n; k++) {
-        coeffs[k] = constant * cos((2* M_PI * k) / (n - 1));
+        coeffs[k] = constant * cos((2 * M_PI * k) / (n - 1));
     }
 
     window_t win;
@@ -83,17 +82,16 @@ window_t make_window_hamming(uint32_t n) {
 }
 
 window_t make_window_blackman_harris(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
     double a0 = 0.35875;
     double a1 = 0.48829;
     double a2 = 0.14128;
     double a3 = 0.01168;
 
     for (uint32_t k = 0; k < n; k++) {
-        coeffs[k] = (a0-a1) * cos((2 * M_PI * k) / (n -1)) +
-                    a2 * cos((4 * M_PI * k) / (n -1)) +
-                    a3 * cos((6 * M_PI * k) / (n -1));
-
+        coeffs[k] = (a0 - a1) * cos((2 * M_PI * k) / (n - 1)) +
+                    a2 * cos((4 * M_PI * k) / (n - 1)) +
+                    a3 * cos((6 * M_PI * k) / (n - 1));
     }
 
     window_t win;
@@ -105,9 +103,9 @@ window_t make_window_blackman_harris(uint32_t n) {
 double zero_order_modified_bessel(double n) {
     double result = 1;
     double factorial = 1;
-    double half_n = n/2;
+    double half_n = n / 2;
     double numerator = 1;
-    for(int i = 1; i < 20; i++) {
+    for (int i = 1; i < 20; i++) {
         numerator *= half_n * half_n;
         factorial *= i;
         result += numerator / (factorial * factorial);
@@ -116,13 +114,14 @@ double zero_order_modified_bessel(double n) {
 }
 
 window_t make_window_kaiser(uint32_t n, double beta) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
 
     double denominator = zero_order_modified_bessel(beta);
     for (uint32_t k = 0; k < n; k++) {
-        double inner_val = 1 - (k/n);
+        double inner_val = 1 - (k / n);
         coeffs[k] = zero_order_modified_bessel(
-                beta * sqrt((1 - (inner_val * inner_val)))) / denominator;
+                        beta * sqrt((1 - (inner_val * inner_val)))) /
+                    denominator;
     }
 
     window_t win;
@@ -132,15 +131,15 @@ window_t make_window_kaiser(uint32_t n, double beta) {
 }
 
 window_t make_window_parzen(uint32_t n) {
-    double *coeffs = (double*) malloc(n * sizeof(double));
+    double *coeffs = (double *)malloc(n * sizeof(double));
 
     for (uint32_t k = 0; k < n; k++) {
         double val = 0;
-        if (k <= (n/4)) {
-            double inner = k/(n/2);
+        if (k <= (n / 4)) {
+            double inner = k / (n / 2);
             val = 1 - 6 * (inner * inner) * (1 - inner);
-        } else if (k > (n/4) && k <= (n/2)) {
-            double inner = 1 - (k/(n/2));
+        } else if (k > (n / 4) && k <= (n / 2)) {
+            double inner = 1 - (k / (n / 2));
             val = 2 * inner * inner * inner;
         }
         coeffs[k] = val;

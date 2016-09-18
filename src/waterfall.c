@@ -1,11 +1,11 @@
 #include <stdint.h>
 
-#include <png.h>
 #include <fftw3.h>
+#include <png.h>
 
-#include "waterfall.h"
-#include "shell.h"
 #include "colormap.h"
+#include "shell.h"
+#include "waterfall.h"
 
 void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
     for (uint32_t i = 0; i < (size - shift); i++) {
@@ -14,16 +14,17 @@ void shiftleft(fftw_complex arr[], uint32_t size, uint32_t shift) {
     }
 }
 
-void waterfall(png_structp png_ptr, FILE* fp, waterfall_params_t params) {
-    png_bytep row = (png_bytep) malloc(3 * params.fftsize * sizeof(png_byte));
+void waterfall(png_structp png_ptr, FILE *fp, waterfall_params_t params) {
+    png_bytep row = (png_bytep)malloc(3 * params.fftsize * sizeof(png_byte));
 
     fftw_complex *in, *out, *inter;
     fftw_plan p;
 
-    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
-    inter = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * params.fftsize);
-    p = fftw_plan_dft_1d(params.fftsize, inter, out, FFTW_FORWARD, FFTW_PATIENT);
+    in = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    inter = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    out = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * params.fftsize);
+    p = fftw_plan_dft_1d(params.fftsize, inter, out, FFTW_FORWARD,
+                         FFTW_PATIENT);
 
     uint32_t half = params.fftsize / 2;
     uint32_t x, y;
@@ -80,5 +81,3 @@ void waterfall(png_structp png_ptr, FILE* fp, waterfall_params_t params) {
     fftw_free(inter);
     fftw_free(out);
 }
-
-
