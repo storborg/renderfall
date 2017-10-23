@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
     }
 
     fseek(readfp, 0, SEEK_END);
-    int size = ftell(readfp);
+    size_t size = ftell(readfp);
     fseek(readfp, skip, SEEK_SET);
 
     size_t sample_size;
@@ -399,6 +399,8 @@ int main(int argc, char *argv[]) {
         fclose(writefp);
         return EXIT_FAILURE;
     }
+
+    png_set_user_limits(png_ptr, 0x7fffffffL, 0x7fffffffL);
 
     if (verbose)
         printf("Writing PNG header..\n");
