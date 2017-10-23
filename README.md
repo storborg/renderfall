@@ -26,14 +26,28 @@ Known Bugs:
 
 ### Basic Usage
 
-Currently, only raw sequential samples are supported. To use a .wav file, you
-can strip the header, and use the ``int16`` input format.
-
-    $ renderfall data.samples
-
-For more options, see:
+See ``renderfall -h`` for options:
 
     $ renderfall -h
+    Usage: renderfall [OPTIONS] <in>
+    Render a waterfall spectrum from raw IQ samples.
+
+    Options:
+      -n, --fftsize <fftsize>	FFT size (power of 2)
+      -f, --format  <format>	Input format: uint8, int16, float64, etc.
+      -w, --window  <window>	Windowing function: hann, gaussian, square, blackmanharris, hamming, kaiser, parzen
+      -o, --outfile <outfile>	Output file path (defaults to <infile>.png)
+      -s, --offset  <offset>	Start at specified byte offset
+      -l, --overlap <overlap>	Overlap N samples per frame (defaults to 0)
+      -c, --clip <clip>	Read only the first N samples from the file
+      -v, --verbose 		Print verbose debugging output
+
+Here's an example using a ``.cf32`` file of complex 32-bit floats:
+
+    $ renderfall -f float32 -n 2048 -w hann data.cf32
+
+Currently, only raw sequential samples are supported. To use a .wav file, you
+can strip the header, and use the ``int16`` input format.
 
 ### Gallery
 
