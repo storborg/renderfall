@@ -1,0 +1,5 @@
+This branch should not be used.
+
+Consider:
+
+    git config --global init.defaultBranch main
